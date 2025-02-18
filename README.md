@@ -13,7 +13,7 @@ Prympt helps to:
 - **Combine prompts:** Seamlessly merge multiple prompt templates using the `+` operator.
 - **Define structured outputs:** Specify expected output formats (e.g., type) so that the responses from LLMs can be automatically verified and parsed.
 - **Robust error handling:** Automatically retry and recover from common LLM response errors or malformed outputs.
-- **Interface with multiple LLMs:** By default, Prympt integrates with [LiteLLM](https://github.com/BerriAI/litellm), but can switch to other LLM providers easily.
+- **Interface with any LLM:** Prympt integrates by default with [LiteLLM](https://github.com/BerriAI/litellm), which supports over 100 LLM APIs, and it also allows you to connect to any LLM API using custom code.
 
 ---
 
