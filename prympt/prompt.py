@@ -93,8 +93,6 @@ class Prompt:
             str: The rendered prompt string.
         """
 
-        print("**", self.outputs)
-
         try:
             variables = extract_jinja_variables(self.template)
 
