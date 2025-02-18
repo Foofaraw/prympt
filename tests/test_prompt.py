@@ -162,3 +162,15 @@ def test_add_prompt_none() -> None:
     prompt1 = Prompt("Indicate the color of the sky").returns("text", "color, e.g. red")
     with pytest.raises(PromptError):
         prompt1 += None
+
+
+def test_replace_outputs() -> None:
+    """Test the extraction of variables from the prompt template."""
+
+    prompt1 = Prompt("Test prompt {{var}}").returns("var1").returns("var2")
+    
+    prompt2 = prompt1(var = "test")
+    
+    assert prompt1.outputs == prompt2.outputs
+    
+    

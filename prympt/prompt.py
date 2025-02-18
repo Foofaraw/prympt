@@ -25,13 +25,6 @@ from .utils import (
 )
 
 jinja_template_outputs = """
-These are outputs you must provide in your answer
-
-{% for output in outputs -%}
-- {{output.type}}: {{output.description}}
-```
-
-{% endfor %}
 
 Provide your response inside an XML such as this:
 
@@ -65,7 +58,7 @@ class Prompt:
         Returns:
             Prompt: A new Prompt instance with substituted template.
         """
-        return Prompt(jinja_substitution(self.template, **kwargs))
+        return Prompt(jinja_substitution(self.template, **kwargs), returns = self.outputs)
 
     def __add__(self, other: Any) -> "Prompt":
         """Concatenate two prompts.
@@ -100,6 +93,8 @@ class Prompt:
             str: The rendered prompt string.
         """
 
+        print("**", self.outputs)
+
         try:
             variables = extract_jinja_variables(self.template)
 
@@ -111,7 +106,7 @@ class Prompt:
             warnings.warn(warning, RuntimeWarning)
 
         string = self.template
-
+        
         if self.outputs:
             outputs_copy = self.outputs.copy()
             for output in outputs_copy:
