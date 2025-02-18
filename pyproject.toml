@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "prympt"
 version = "1.0.1"
-description = "Library with boilerplate functionality to interface with LLM's"
+description = "A Python Package for LLM Prompting and Interfacing"
 readme = "README.md"
 authors = [{ name = "foofaraw (GitHub: foofaraw)", email = "foofaraw.github@gmail.com" }]
 license = { file = "MIT License" }
