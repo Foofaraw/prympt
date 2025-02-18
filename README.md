@@ -162,7 +162,7 @@ You can also specify the expected outputs as a list of `Output` objects in the P
         Output(name="sentiment", type="float")
     ])
 
-    news_body = "..."
+    news_body = "Aliens attack Earth right after world peace achieved"
     response = prompt(news_body = news_body).query(**model_params)
     print(response.summary)    # Expected output: A brief summary of the news article
     print(response.sentiment)  # Expected output: A sentiment score between -1 and 1
@@ -176,7 +176,7 @@ You can also specify the expected outputs as a list of `Output` objects in the P
 Prympt includes an automatic retry mechanism for queries. You can specify the number of retries if the LLM response does not match the expected output structure:
 
     prompt = Prompt("Generate Python function that prints weekday, from any given date").returns("python", "python code goes here")
-    response = prompt.query(retries=5)  # Default number of retries is 3
+    response = prompt.query(retries=5, **model_params)  # Default number of retries is 3
     print(response)
 
 ### Warnings
