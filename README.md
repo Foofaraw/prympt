@@ -145,7 +145,7 @@ Prympt supports prompts with multiple expected return values:
     Also, provide a sentiment score (scale from -1 to 1) for the news article.
     """).returns("summary", "A concise summary of the news article").returns(name="sentiment", type="float")
 
-    news_body = "..."
+    news_body = "Aliens attack Earth right after world peace achieved"
     combined_response = prompt(news_body = news_body).query(**model_params)
     print(combined_response.summary)    # Expected output: A brief summary of the news article
     print(combined_response.sentiment)  # Expected output: A sentiment score between -1 and 1
