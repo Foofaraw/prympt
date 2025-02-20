@@ -26,10 +26,10 @@ This is an example that showcases the main features of `prympt`. The following c
 
 You can give the template parameter 'movie_review' a specific value, and query the LLM with the prompt. The outputs are easily retrieved as properties of the response object:
 
-    # Define value for 'movie_review' template variable
+    # Define value for 'movie_review'
     movie_review = "A captivating drama that deftly blends mystery with heartfelt emotion. The film follows the story of a troubled detective, Alex Monroe, as he unravels a decades-old mystery that forces him to confront his own past. The narrative is rich with twists and turns, keeping the audience engaged from start to finish."
 
-    # Set that value in the template variable, and query the LLM with the resulting prompt
+    # Set the template variable with that value, and query the LLM with the resulting prompt
     response = prompt(movie_review).query(**model_params)
     
     print(response.title)      # Expected output: A one-line title for the review.
