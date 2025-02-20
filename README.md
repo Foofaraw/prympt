@@ -22,12 +22,7 @@ This is an example that showcases the main features of `prympt`. The following c
         "Provide a sentiment score (scale from -1 to 1)."
     ).returns("sentiment", type="float")
 
-    # Define a prompt with annotated output named 'topics'
-    prompt_topics = Prompt(
-        "Provide a list of comma separated topics."
-    ).returns("topics")
-
-    prompt = prompt_title + prompt_sentiment + prompt_topics
+    prompt = prompt_title + prompt_sentiment
 
 You can give the template parameter 'movie_review' a specific value, and query the LLM with the prompt. The outputs are easily retrieved as properties of the response object:
 
@@ -41,7 +36,6 @@ You can give the template parameter 'movie_review' a specific value, and query t
     
     print(response.title)      # Expected output: A one-line title for the review.
     print(response.sentiment)  # Expected output: A sentiment score between -1 and 1.
-    print(response.topics)     # Expected output: The comma separated list of topics for the review.
 
 To summarize, the package provides these main functionalities:
 
