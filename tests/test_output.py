@@ -3,7 +3,7 @@
 
 import pytest
 
-from prympt import MalformedOutput, Output
+from prympt import MalformedOutput, Output, ResponseError
 from prympt.output import outputs_to_xml, xml_to_outputs
 
 response_xml = """
@@ -64,21 +64,20 @@ def test_invalid_result_name() -> None:
         Output(name="python code")
 
 
-def test_invalid_type() -> None:
-    with pytest.raises(MalformedOutput):
-        Output(
-            content="Hello World",
-            name="greeting",
-            description="A greeting",
-            type="message",
-        )
+def test_unknwon_type() -> None:
+    with pytest.raises(
+        ResponseError,
+        match="Tried to create Output with a non-standard basic Python type: 'message'",
+    ):
+        Output(name="greeting", content="Hello World", type="message")
 
 
-def test_wrong_type() -> None:
-    with pytest.raises(MalformedOutput):
-        Output(
-            content="Hello World", name="greeting", description="A greeting", type="int"
-        )
+def test_cannot_cast_value_to_type() -> None:
+    with pytest.raises(
+        MalformedOutput,
+        match="Could not cast parameter value 'Hello World' to suggested type 'int'",
+    ):
+        Output(name="greeting", content="Hello World", type="int")
 
 
 response_multiple_xmls = """

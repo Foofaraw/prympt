@@ -38,8 +38,8 @@ You can give the template parameter 'movie_review' a specific value, and query t
 To summarize, the package provides these main functionalities:
 
 - **Dynamic Prompt Composition:** Leverage enhanced [Jinja2](https://jinja.palletsprojects.com/) templating to easily substitute variables, iterate over collections.
-- **Structured Output Definitions:** Annotate your prompts with expected output formats with types (e.g., `int`, `float`) so that responses from LLMs can be automatically verified, parsed, and validated.
 - **Combine prompts:** Seamlessly combine multiple prompt templates and their outputs using the `+` operator for modular, reusable prompts.
+- **Structured Output Definitions:** Annotate prompts with expected outputs, optionally indicating their type (e.g., `int`, `float`) so that responses from LLMs can be automatically verified, parsed, and validated.
 - **Robust Error Handling:** Built-in mechanisms automatically retry and recover from common LLM response errors or malformed outputs, ensuring reliable interactions even when outputs deviate from expectations.
 - **Flexible LLM Integration:** `prympt` integrates by default with [LiteLLM](https://github.com/BerriAI/litellm), which supports over 100 LLM APIs, and also allows you to connect to any LLM API using custom code or your preferred provider.
 
@@ -123,9 +123,9 @@ Prompts can be annotated with expected outputs using the `returns` method:
 
 The method `returns` has the same parameters as the object `Output`constructor:
 
-- name (str): name of the output (and name of property in the `Response`object)
-- description (str): description of output
-- type (str): expected type of the output (e.g. `int`, `float`, `str`)
+- name (str): Name of the output (and name of property in the `Response`object).
+- description (str): Description of output.
+- type (str): Expected type of the output. Currently supported are `int`, `float`, `str`, and `bool`.
 
 Each prompt can have multiple output annotations:
 

@@ -46,7 +46,7 @@ def test_codeblocks_iteration() -> None:
         ), f"{codeblock} is not equal to {outputs[index]}"
 
 
-@pytest.mark.parametrize("output", outputs)  # type: ignore
+@pytest.mark.parametrize("output", outputs)
 def test_response_contains(output: Output) -> None:
     """Test the __contains__ method of the Response class with various substrings."""
     if output.name:

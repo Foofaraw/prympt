@@ -11,6 +11,7 @@ from typing import Any, List, Union
 from xml.dom import minidom
 
 from .exceptions import MalformedOutput
+from .utils import convert_to_Python_type
 
 
 @dataclass
@@ -30,18 +31,21 @@ class Output:
             )
 
         if self.type and self.content:
-            try:
-                parsed_type = getattr(builtins, self.type)
-                if parsed_type is not str:
-                    self.content = parsed_type(ast.literal_eval(self.content))
+            if self.type != "str":
+                self.content = convert_to_Python_type(self.content, self.type)
+            # parsed_type = getattr(builtins, self.type)
+            # if parsed_type is not str:
+            #    self.content = parsed_type(ast.literal_eval(self.content))
+            """
             except AttributeError:
                 raise MalformedOutput(
-                    f"Could not parse suggested type '{self.type}' for parameter '{self.name}' in response"
+                    f"Could not cast parameter '{self.name}' in response with suggested type '{self.type}'"
                 )
             except SyntaxError:
                 raise MalformedOutput(
                     f"Got value '{self.content}' for parameter '{self.name}' does not convert into type '{self.type}' suggested in response"
                 )
+            """
 
 
 def outputs_to_xml(outputs: List[Output]) -> str:
