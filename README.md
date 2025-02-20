@@ -29,7 +29,7 @@ This is an example that showcases the main features of `prympt`. The following c
 
     prompt = prompt_title + prompt_sentiment + prompt_topics
 
-The prompt can be rendered with a specific value for the template parameter 'movie_review', then used to query the LLM. The outputs can be easily retrieved from the response object:
+You can give the template parameter 'movie_review' a specific value, and query the LLM with the prompt. The outputs are easily retrieved as properties of the response object:
 
     # Define value for 'movie_review' template variable
     movie_review = """
@@ -255,5 +255,5 @@ Use the following commands to ensure your code adheres to project standards:
 
 Execute the test suite with:
 
-    pytest
+    pytest .
 
