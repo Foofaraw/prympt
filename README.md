@@ -124,8 +124,6 @@ Returned values are automatically parsed and attached as member variables to the
 
 The call to `query()` will automatically raise errors (or retry, if retries parameter is set to >= 1, see below) when the values provided by the LLM do not match the specified types or number.
 
-### Multiple Return Values
-
 `prympt` supports prompts with multiple expected return values:
 
     prompt = Prompt("""
