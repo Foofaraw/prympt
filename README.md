@@ -78,14 +78,15 @@ See [LiteLLM providers](https://docs.litellm.ai/docs/providers/) for further inf
 
     prompt = Prompt("Can you produce a short poem?")
 
-### Jinja2 Substitutions
+### Prompts With Jinja2 Variables
 
 `prympt` supports full Jinja2 templating for dynamic prompt generation:
 
     sms_prompt = Prompt("Hi {{ name }}, your appointment is at {{ time }}.")
+
     print(sms_prompt(name="Alice", time="2 PM"))
 
-Advance substitutions are also possible (Jinja2 iterations):
+Advanced substitutions are also possible (Jinja2 iterations):
 
     order_prompt = Prompt("""
     Your order includes:
@@ -93,6 +94,7 @@ Advance substitutions are also possible (Jinja2 iterations):
     - {{ item }}
     {% endfor %}
     """)
+
     print(order_prompt(items=["Laptop", "Mouse", "Keyboard"]))
 
 ### Combining Prompts
@@ -119,14 +121,20 @@ Prompts can be annotated with expected outputs using the `returns` method:
     prompt = Prompt("What is the meaning of life, the universe, and everything?")
     prompt = prompt.returns(name="meaning", type="int").query(**model_params)
 
-`prympt` supports prompts with multiple expected return values:
+The method `returns` has the same parameters as the object `Output`constructor:
+
+- name (str): name of the output (and name of property in the `Response`object)
+- description (str): description of output
+- type (str): expected type of the output (e.g. `int`, `float`, `str`)
+
+Each prompt can have multiple output annotations:
 
     prompt = Prompt("""
     Summarize the following news article:  {{news_body}} 
     Also, provide a sentiment score (scale from -1 to 1) for the news article.
     """).returns("summary", "A concise summary of the news article").returns(name="sentiment", type="float")
 
-You can also specify the expected outputs as a list of `Output` objects in the Prompt constructor:
+Outputs can also be specified as a list of `Output` objects in the Prompt constructor:
 
     from prympt import Output
 
@@ -187,6 +195,7 @@ If you prefer to use your own way to interact with the LLM, you can supply a cus
         return message
 
     response = Prompt("Can you produce a short poem?").query(llm_completion=custom_llm_completion, **model_params)
+
     print(response)
 
 ---
@@ -236,4 +245,3 @@ Use the following commands to ensure your code adheres to project standards:
 Execute the test suite with:
 
     pytest .
-
