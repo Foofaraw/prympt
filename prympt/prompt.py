@@ -59,10 +59,6 @@ class Prompt:
                 f"Provided {len(args)} positional arguments, but prompt template has only {len(variable_names)} variables"
             )
 
-        print(
-            f"Setting variables {list(variable_names)[:len(args)]}, k in args = {kwargs.keys()}"
-        )
-
         for k, v in zip(variable_names, args):
 
             if k in kwargs:
