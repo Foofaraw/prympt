@@ -33,20 +33,6 @@ class Output:
         if self.type and self.content:
             if self.type != "str":
                 self.content = convert_to_Python_type(self.content, self.type)
-            # parsed_type = getattr(builtins, self.type)
-            # if parsed_type is not str:
-            #    self.content = parsed_type(ast.literal_eval(self.content))
-            """
-            except AttributeError:
-                raise MalformedOutput(
-                    f"Could not cast parameter '{self.name}' in response with suggested type '{self.type}'"
-                )
-            except SyntaxError:
-                raise MalformedOutput(
-                    f"Got value '{self.content}' for parameter '{self.name}' does not convert into type '{self.type}' suggested in response"
-                )
-            """
-
 
 def outputs_to_xml(outputs: List[Output]) -> str:
     """
