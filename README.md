@@ -114,15 +114,10 @@ Prompts can be concatenated using the `+` operator to build more complex interac
 
 ### Annotating Prompts with Outputs
 
-Prompts can be annotated with expected return values:
+Prompts can be annotated with expected outputs using the `returns` method:
 
     prompt = Prompt("What is the meaning of life, the universe, and everything?")
-    response = prompt.returns(name="meaning", type="int").query(**model_params)
-    print(response.meaning) # Expected output: 42
-
-Returned values are automatically parsed and attached as member variables to the response. This approach makes it simple to extract and use them.
-
-The call to `query()` will automatically raise errors (or retry, if retries parameter is set to >= 1, see below) when the values provided by the LLM do not match the specified types or number.
+    prompt = prompt.returns(name="meaning", type="int").query(**model_params)
 
 `prympt` supports prompts with multiple expected return values:
 
@@ -130,11 +125,6 @@ The call to `query()` will automatically raise errors (or retry, if retries para
     Summarize the following news article:  {{news_body}} 
     Also, provide a sentiment score (scale from -1 to 1) for the news article.
     """).returns("summary", "A concise summary of the news article").returns(name="sentiment", type="float")
-
-    news_body = "Aliens attack Earth right after world peace achieved"
-    combined_response = prompt(news_body = news_body).query(**model_params)
-    print(combined_response.summary)    # Expected output: A brief summary of the news article
-    print(combined_response.sentiment)  # Expected output: A sentiment score between -1 and 1
 
 You can also specify the expected outputs as a list of `Output` objects in the Prompt constructor:
 
@@ -148,34 +138,48 @@ You can also specify the expected outputs as a list of `Output` objects in the P
         Output(name="sentiment", type="float")
     ])
 
-    news_body = "Aliens attack Earth right after world peace achieved"
-    response = prompt(news_body = news_body).query(**model_params)
-    print(response.summary)    # Expected output: A brief summary of the news article
-    print(response.sentiment)  # Expected output: A sentiment score between -1 and 1
-
 ---
 
-## Invoking Prompts
+## Querying Prompts
 
-`prympt`’s main entry point is the `Prompt` class. Here’s a simple example that uses it to generate a poem:
+We can extend the previous example to query the LLM with the prompt:
 
-    from prympt import Prompt
-
+    # Define LLM model params
     model_params = {
         "model": "gpt-4o",
         "temperature": 1.0,
         "max_tokens": 5000,
     }
 
+    # Define the value for the template variable `news_body`
+    news_body = "Aliens attack Earth right after world peace achieved"
+
+    # Query LLM with the prompt
+    response = prompt(news_body = news_body).query(**model_params)
+    print(response.summary)    # Expected output: A brief summary of the news article
+    print(response.sentiment)  # Expected output: A sentiment score between -1 and 1
+
     response = Prompt("Can you produce a short poem?").query(**model_params)
 
-The response can be printed as a regular string, although it is a Python object of type `Response`:
+The method `query` does several more things, such as parsing the response of the LLM for return values (see below). It returns a `Response` object that contains the prompt outputs as member variables. This approach makes it simple to extract and use them.
 
+### Automatic Query Recovery
+
+`prympt` includes an automatic retry mechanism for queries. You can specify the number of retries if the LLM response does not match the expected output structure:
+
+    prompt = Prompt("Generate Python function that prints weekday, from any given date").returns("python", "python code goes here")
+    response = prompt.query(retries=5, **model_params)  # Default number of retries is 3
     print(response)
 
-By default, the `query()` function uses LiteLLM to interact with the chosen LLM. That function does several more things, such as parsing the response of the LLM for return values (see below).
+When the `retries` parameter of the `query` method is set to >= 1, the call to `query` will automatically retry the call to the LLM if the LLM's does not reply with the correct outputs (e.g. the LLM provided outputs that cannot be parsed, or do not match the prompt's outputs).
 
-If you prefer to use your own way to interact with the LLM, you can supply a custom completion function to `query()`:
+When the `query` method runs out of retries, it will raise an **ResponseError** exception, indicating the last error found in the LLM's response (see below).
+
+### Custom LLM Interfacing
+
+By default `query` uses LiteLLM to interact with the chosen LLM.
+
+If you prefer to use your own way to interact with the LLM, you can supply a custom completion function to `query`:
 
     def custom_llm_completion(prompt: str, *args, **kwargs) -> str:
         # Replace with your own LLM API call
@@ -189,30 +193,22 @@ If you prefer to use your own way to interact with the LLM, you can supply a cus
 
 ## Error Control
 
-### Automatic LLM Query Error Recovery
-
-`prympt` includes an automatic retry mechanism for queries. You can specify the number of retries if the LLM response does not match the expected output structure:
-
-    prompt = Prompt("Generate Python function that prints weekday, from any given date").returns("python", "python code goes here")
-    response = prompt.query(retries=5, **model_params)  # Default number of retries is 3
-    print(response)
-
 ### Warnings
 
 `prympt` will issue warnings in cases such as:
 - Errors during Jinja2 template rendering (e.g., undefined variables or incorrect syntax).
-- Transient errors during `Prompt.query()` when retries are in progress.
+- Transient errors during `Prompt.query` when retries are in progress.
 
 ### Exceptions
 
 `prympt` defines a hierarchy of exceptions for granular error handling when retries fail:
 
-- **MalformedOutput:** Raised by `Prompt.returns()` and the `Output` constructor when:
+- **MalformedOutput:** Raised by `Prompt.returns` and the `Output` constructor when:
   - The output name is invalid (must be a valid Python identifier: [a-z_][a-z0-9_-]*).
   - The specified type cannot be parsed (must be a valid Python type, e.g., `int`, `float`).
   - The LLM provides a value that cannot be converted to the expected type.
 - **ConcatenationError:** Raised when attempting to add a prompt to an unsupported type.
-- **ResponseError:** Raised by `Prompt.query()` when the LLM response does not match the expected output structure (e.g., incorrect number, name, or type of outputs).
+- **ResponseError:** Raised by `Prompt.query` when the LLM response does not match the expected output structure (e.g., incorrect number, name, or type of outputs).
 
 All these custom exceptions inherit from a common Exception class `PromptError`.
 
