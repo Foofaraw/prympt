@@ -1,6 +1,6 @@
 # prympt: A Python Package for LLM Prompting and Interfacing
 
-_prympt_ is an open source Python package designed to simplify and standardize typical interactions with Large Language Models (LLMs). It encapsulates typical boilerplate functionality for prompt composition and LLM response parsing, such as templating, prompt combination, and structured output handling-all in a lightweight package.
+`prympt` is an open source Python package designed to simplify and standardize typical interactions with Large Language Models (LLMs). It encapsulates typical boilerplate functionality for prompt composition and LLM response parsing, such as templating, prompt combination, and structured output handling-all in a lightweight package.
 
 This package is provided as a free software under MIT license. Feedback and contributions to improve it are welcome!
 
@@ -8,7 +8,7 @@ This package is provided as a free software under MIT license. Feedback and cont
 
 ## Quick Overview
 
-This is an example that showcases the main features of _prympt_. The following code composes several prompts, defines structured outputs for them, and combines them into a single prompt:
+This is an example that showcases the main features of `prympt`. The following code composes several prompts, defines structured outputs for them, and combines them into a single prompt:
 
     from prympt import Prompt
 
@@ -49,7 +49,7 @@ To summarize, the package provides these main functionalities:
 - **Structured Output Definitions:** Annotate your prompts with expected output formats with types (e.g., `int`, `float`) so that responses from LLMs can be automatically verified, parsed, and validated.
 - **Combine prompts:** Seamlessly combine multiple prompt templates and their outputs using the `+` operator for modular, reusable prompts.
 - **Robust Error Handling:** Built-in mechanisms automatically retry and recover from common LLM response errors or malformed outputs, ensuring reliable interactions even when outputs deviate from expectations.
-- **Flexible LLM Integration:** _prympt_ integrates by default with [LiteLLM](https://github.com/BerriAI/litellm), which supports over 100 LLM APIs, and also allows you to connect to any LLM API using custom code or your preferred provider.
+- **Flexible LLM Integration:** `prympt` integrates by default with [LiteLLM](https://github.com/BerriAI/litellm), which supports over 100 LLM APIs, and also allows you to connect to any LLM API using custom code or your preferred provider.
 
 ---
 
@@ -72,7 +72,7 @@ Set up your environment by defining the necessary API keys. You can add these to
       DEEPSEEK_API_KEY=your_deepseek_api_key_here
       LLM_MODEL=deepseek/deepseek-chat
 
-See [LiteLLM providers](https://docs.litellm.ai/docs/providers/) for further info on configuring _prympt_ with other LLM service providers.
+See [LiteLLM providers](https://docs.litellm.ai/docs/providers/) for further info on configuring `prympt` with other LLM service providers.
 
 ---
 
@@ -80,7 +80,7 @@ See [LiteLLM providers](https://docs.litellm.ai/docs/providers/) for further inf
 
 ### Creating a Prompt Object
 
-_prympt_’s main entry point is the `Prompt` class. Here’s a simple example that uses it to compose a prompt that creates a poem:
+`prympt`’s main entry point is the `Prompt` class. Here’s a simple example that uses it to compose a prompt that creates a poem:
 
     from prympt import Prompt
 
@@ -88,7 +88,7 @@ _prympt_’s main entry point is the `Prompt` class. Here’s a simple example t
 
 ### Jinja2 Substitutions
 
-_prympt_ supports full Jinja2 templating for dynamic prompt generation:
+`prympt` supports full Jinja2 templating for dynamic prompt generation:
 
     sms_prompt = Prompt("Hi {{ name }}, your appointment is at {{ time }}.")
     print(sms_prompt(name="Alice", time="2 PM"))
@@ -140,7 +140,7 @@ The call to `query()` will automatically raise errors (or retry, if retries para
 
 ### Multiple Return Values
 
-_prympt_ supports prompts with multiple expected return values:
+`prympt` supports prompts with multiple expected return values:
 
     prompt = Prompt("""
     Summarize the following news article:  {{news_body}} 
@@ -173,7 +173,7 @@ You can also specify the expected outputs as a list of `Output` objects in the P
 
 ## Invoking Prompts
 
-_prympt_’s main entry point is the `Prompt` class. Here’s a simple example that uses it to generate a poem:
+`prympt`’s main entry point is the `Prompt` class. Here’s a simple example that uses it to generate a poem:
 
     from prympt import Prompt
 
@@ -207,7 +207,7 @@ If you prefer to use your own way to interact with the LLM, you can supply a cus
 
 ### Automatic LLM Query Error Recovery
 
-_prympt_ includes an automatic retry mechanism for queries. You can specify the number of retries if the LLM response does not match the expected output structure:
+`prympt` includes an automatic retry mechanism for queries. You can specify the number of retries if the LLM response does not match the expected output structure:
 
     prompt = Prompt("Generate Python function that prints weekday, from any given date").returns("python", "python code goes here")
     response = prompt.query(retries=5, **model_params)  # Default number of retries is 3
@@ -215,13 +215,13 @@ _prympt_ includes an automatic retry mechanism for queries. You can specify the 
 
 ### Warnings
 
-_prympt_ will issue warnings in cases such as:
+`prympt` will issue warnings in cases such as:
 - Errors during Jinja2 template rendering (e.g., undefined variables or incorrect syntax).
 - Transient errors during `Prompt.query()` when retries are in progress.
 
 ### Exceptions
 
-_prympt_ defines a hierarchy of exceptions for granular error handling when retries fail:
+`prympt` defines a hierarchy of exceptions for granular error handling when retries fail:
 
 - **MalformedOutput:** Raised by `Prompt.returns()` and the `Output` constructor when:
   - The output name is invalid (must be a valid Python identifier: [a-z_][a-z0-9_-]*).
@@ -238,7 +238,7 @@ All these custom exceptions inherit from a common Exception class `PromptError`.
 
 ### Setting Up the Development Environment
 
-Install _prympt_ along with its development dependencies:
+Install `prympt` along with its development dependencies:
 
     pip install prympt[dev]
 
