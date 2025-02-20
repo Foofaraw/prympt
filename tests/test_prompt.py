@@ -3,12 +3,7 @@
 
 import pytest
 
-from prympt import (
-    ConcatenationError,
-    Output,
-    Prompt,
-    PromptError,
-)
+from prympt import ConcatenationError, Output, Prompt, PromptError, ReplacementError
 from prympt.output import xml_to_outputs
 
 
@@ -72,7 +67,7 @@ def test_multiple_variables_loop() -> None:
 def test_get_variables() -> None:
     """Test the extraction of variables from the prompt template."""
     prompt = Prompt(template_multiple_variables_loop)
-    assert prompt.get_variables() == {"prompt", "items", "this"}
+    assert prompt.get_variables() == ["prompt", "this", "items"]
 
 
 def test_single_result() -> None:
@@ -164,13 +159,27 @@ def test_add_prompt_none() -> None:
         prompt1 += None
 
 
-def test_replace_outputs() -> None:
+def test_replace_keep_outputs() -> None:
     """Test the extraction of variables from the prompt template."""
 
     prompt1 = Prompt("Test prompt {{var}}").returns("var1").returns("var2")
-    
-    prompt2 = prompt1(var = "test")
-    
+
+    prompt2 = prompt1(var="test")
+
     assert prompt1.outputs == prompt2.outputs
-    
-    
+
+
+def test_replace_errors() -> None:
+    """Test the extraction of variables from the prompt template."""
+
+    prompt = Prompt("Test prompt {{var1}} {{var2}} {{var3}}")
+    with pytest.raises(
+        ReplacementError,
+        match="Provided 4 positional arguments, but prompt template has only 3 variables",
+    ):
+        prompt("value1", "value2", "value3", "value4")
+
+    with pytest.raises(
+        ReplacementError, match="Got multiple values for template variable 'var1'"
+    ):
+        prompt("value1", "value2", var1="value1")

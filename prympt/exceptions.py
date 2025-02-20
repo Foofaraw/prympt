@@ -17,6 +17,14 @@ class ConcatenationError(PromptError):
         super().__init__(message)
 
 
+class ReplacementError(PromptError):
+    """Exception class for replacement-related errors."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
 class ResponseError(PromptError):
     """Base exception class for response-related errors."""
 

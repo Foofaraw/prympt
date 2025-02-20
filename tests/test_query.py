@@ -5,11 +5,7 @@ from typing import Any, Union
 
 import pytest
 
-from prympt import (
-    Output,
-    Prompt,
-    ResponseError,
-)
+from prympt import Output, Prompt, ResponseError
 from prympt.output import outputs_to_xml
 
 response_3_tries_no_codeblock = "This is not the answer you're looking for"

@@ -10,9 +10,7 @@ from dataclasses import dataclass
 from typing import Any, List, Union
 from xml.dom import minidom
 
-from .exceptions import (
-    MalformedOutput,
-)
+from .exceptions import MalformedOutput
 
 
 @dataclass
@@ -74,7 +72,7 @@ def outputs_to_xml(outputs: List[Output]) -> str:
 
     # Indent
     dom = minidom.parseString(xml_str)
-    pretty_xml_str = dom.toprettyxml(indent="  ")  # Use 2 spaces for indentation
+    pretty_xml_str = str(dom.toprettyxml(indent="  "))  # Use 2 spaces for indentation
 
     # Remove the XML declaration line if present:
     lines = pretty_xml_str.splitlines()

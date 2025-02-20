@@ -12,17 +12,10 @@ from typing import Any, List, Tuple, Union
 
 from jinja2 import TemplateSyntaxError
 
-from .exceptions import (
-    ConcatenationError,
-    ResponseError,
-)
+from .exceptions import ConcatenationError, ReplacementError, ResponseError
 from .output import Output, outputs_to_xml
 from .response import Response
-from .utils import (
-    extract_jinja_variables,
-    jinja_substitution,
-    litellm_completion,
-)
+from .utils import extract_jinja_variables, jinja_substitution, litellm_completion
 
 jinja_template_outputs = """
 
@@ -49,16 +42,36 @@ class Prompt:
         self.template: str = template
         self.outputs: List[Output] = returns
 
-    def __call__(self, **kwargs: Any) -> "Prompt":
+    def __call__(self, *args: Any, **kwargs: Any) -> "Prompt":
         """Render the prompt with the given keyword arguments.
 
         Args:
-            **kwargs: Variables to substitute into the template.
+            *args: Variables to substitute into the template.
+            **kwargs: Named variables to substitute into the template.
 
         Returns:
             Prompt: A new Prompt instance with substituted template.
         """
-        return Prompt(jinja_substitution(self.template, **kwargs), returns = self.outputs)
+        variable_names = self.get_variables()
+
+        if len(args) > len(variable_names):
+            raise ReplacementError(
+                f"Provided {len(args)} positional arguments, but prompt template has only {len(variable_names)} variables"
+            )
+
+        print(
+            f"Setting variables {list(variable_names)[:len(args)]}, k in args = {kwargs.keys()}"
+        )
+
+        for k, v in zip(variable_names, args):
+
+            if k in kwargs:
+                raise ReplacementError(
+                    f"Got multiple values for template variable '{k}'"
+                )
+            kwargs[k] = v
+
+        return Prompt(jinja_substitution(self.template, **kwargs), returns=self.outputs)
 
     def __add__(self, other: Any) -> "Prompt":
         """Concatenate two prompts.
@@ -104,7 +117,7 @@ class Prompt:
             warnings.warn(warning, RuntimeWarning)
 
         string = self.template
-        
+
         if self.outputs:
             outputs_copy = self.outputs.copy()
             for output in outputs_copy:
@@ -129,7 +142,7 @@ class Prompt:
         with open(template_file, "r") as file:
             return cls(file.read())
 
-    def get_variables(self) -> set[Any]:
+    def get_variables(self) -> List[str]:
         """Extract variables from the template.
 
         Returns:

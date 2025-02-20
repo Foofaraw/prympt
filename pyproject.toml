@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "prympt"
-version = "1.0.2"
+version = "1.1.0"
 description = "A Python Package for LLM Prompting and Interfacing"
 readme = "README.md"
 authors = [{ name = "foofaraw (GitHub: foofaraw)", email = "foofaraw.github@gmail.com" }]
@@ -51,9 +51,9 @@ include = '\.pyi?$'
 [tool.ruff]
 line-length = 88
 target-version = "py310"
-select = ["E", "F", "W", "I"]  # Enable error, warning, and import sorting rules
-fixable = ["ALL"]  # Auto-fix all fixable issues
-ignore = ["E203", "E501", "F401"]  # Ignore specific rules
+lint.select = ["E", "F", "W", "I"]  # Enable error, warning, and import sorting rules
+lint.fixable = ["ALL"]  # Auto-fix all fixable issues
+lint.ignore = ["E203", "E501", "F401"]  # Ignore specific rules
 
 [tool.mypy]
 python_version = "3.10"

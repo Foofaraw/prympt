@@ -3,10 +3,7 @@
 
 import pytest
 
-from prympt import (
-    MalformedOutput,
-    Output,
-)
+from prympt import MalformedOutput, Output
 from prympt.output import outputs_to_xml, xml_to_outputs
 
 response_xml = """

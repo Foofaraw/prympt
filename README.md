@@ -1,35 +1,61 @@
-# Prympt: A Python Package for LLM Prompting and Interfacing
+# prympt: A Python Package for LLM Prompting and Interfacing
 
-Prympt is an open source Python package designed to simplify and standardize interactions with Large Language Models (LLMs). It encapsulates typical boilerplate functionality such as templating, prompt combination, and structured output handling—all in a lightweight package.
+_prympt_ is an open source Python package designed to simplify and standardize typical interactions with Large Language Models (LLMs). It encapsulates typical boilerplate functionality for prompt composition and LLM response parsing, such as templating, prompt combination, and structured output handling-all in a lightweight package.
 
-Prympt is provided as a free software under MIT license. Feedback and contributions to improve it are welcome!
-
----
-
-## Overview
-
-Prympt helps to:
-- **Compose dynamic prompts:** Use [Jinja2](https://jinja.palletsprojects.com/) syntax to easily substitute variables and iterate over collections.
-- **Combine prompts:** Seamlessly merge multiple prompt templates using the `+` operator.
-- **Define structured outputs:** Specify expected output formats (e.g., type) so that the responses from LLMs can be automatically verified and parsed.
-- **Robust error handling:** Automatically retry and recover from common LLM response errors or malformed outputs.
-- **Interface with any LLM:** Prympt integrates by default with [LiteLLM](https://github.com/BerriAI/litellm), which supports over 100 LLM APIs, and it also allows you to connect to any LLM API using custom code.
+This package is provided as a free software under MIT license. Feedback and contributions to improve it are welcome!
 
 ---
 
-## Features
+## Quick Overview
 
-- **Enhanced Jinja2 Templating:** Extends base Jinja2 capabilities with custom functionality to combine multiple templates, ensuring prompts are modular and reusable.
-- **Structured Output Definitions:** Annotate prompts with expected outputs. Prympt can automatically verify that the LLM responses match annotated outputs.
-- **Type Enforcement:** Define expected types for outputs (e.g., `int`, `float`). Prympt will validate the responses, raise exceptions, and retry queries if the output does not conform.
-- **Error Recovery:** Built-in mechanisms to retry LLM queries when provided outputs are not as expected. This makes the tool particularly robust for working with LLMs that might occasionally return malformed data.
-- **Flexible LLM Integration:** Whether you use OpenAI, DeepSeek, or another provider, Prympt offers a default interface and the option to specify own LLM completion function.
+This is an example that showcases the main features of _prympt_. The following code composes several prompts, defines structured outputs for them, and combines them into a single prompt:
+
+    from prympt import Prompt
+
+    # Define a prompt with annotated output named 'title'
+    prompt_title = Prompt(
+        "Provide a title for the following movie review: {{movie_review}}",
+    ).returns("title")
+
+    # Define a prompt with annotated 'float' output named 'sentiment'
+    prompt_sentiment = Prompt(
+        "Provide a sentiment score (scale from -1 to 1)."
+    ).returns("sentiment", type="float")
+
+    # Define a prompt with annotated output named 'topics'
+    prompt_topics = Prompt(
+        "Provide a list of comma separated topics."
+    ).returns("topics")
+
+    prompt = prompt_title + prompt_sentiment + prompt_topics
+
+The prompt can be rendered with a specific value for the template parameter 'movie_review', then used to query the LLM. The outputs can be easily retrieved from the response object:
+
+    # Define value for 'movie_review' template variable
+    movie_review = """
+    A captivating drama that deftly blends mystery with heartfelt emotion. The film follows the story of a troubled detective, Alex Monroe, as he unravels a decades-old mystery that forces him to confront his own past. The narrative is rich with twists and turns, keeping the audience engaged from start to finish.
+    """
+
+    # Set that value in the template variable, and query the LLM with the resulting prompt
+    response = prompt(movie_review).query(**model_params)
+    
+    print(response.title)      # Expected output: A one-line title for the review.
+    print(response.sentiment)  # Expected output: A sentiment score between -1 and 1.
+    print(response.topics)     # Expected output: The comma separated list of topics for the review.
+
+To summarize, the package provides these main functionalities:
+
+- **Dynamic Prompt Composition:** Leverage enhanced [Jinja2](https://jinja.palletsprojects.com/) templating to easily substitute variables, iterate over collections.
+- **Structured Output Definitions:** Annotate your prompts with expected output formats with types (e.g., `int`, `float`) so that responses from LLMs can be automatically verified, parsed, and validated.
+- **Combine prompts:** Seamlessly combine multiple prompt templates and their outputs using the `+` operator for modular, reusable prompts.
+- **Robust Error Handling:** Built-in mechanisms automatically retry and recover from common LLM response errors or malformed outputs, ensuring reliable interactions even when outputs deviate from expectations.
+- **Flexible LLM Integration:** _prympt_ integrates by default with [LiteLLM](https://github.com/BerriAI/litellm), which supports over 100 LLM APIs, and also allows you to connect to any LLM API using custom code or your preferred provider.
 
 ---
 
 ## Installation
 
-Install Prympt from PyPI using pip:
+Install from PyPI using pip:
 
     pip install prympt
 
@@ -46,47 +72,23 @@ Set up your environment by defining the necessary API keys. You can add these to
       DEEPSEEK_API_KEY=your_deepseek_api_key_here
       LLM_MODEL=deepseek/deepseek-chat
 
-See [LiteLLM providers](https://docs.litellm.ai/docs/providers/) for further info on configuring Prympt with other LLM service providers.
+See [LiteLLM providers](https://docs.litellm.ai/docs/providers/) for further info on configuring _prympt_ with other LLM service providers.
 
 ---
 
-## Basic Usage
+## Composing Prompts
 
-### Importing and Using the Prompt Class
+### Creating a Prompt Object
 
-Prympt’s main entry point is the `Prompt` class. Here’s a simple example that uses it to generate a poem:
+_prympt_’s main entry point is the `Prompt` class. Here’s a simple example that uses it to compose a prompt that creates a poem:
 
     from prympt import Prompt
 
-    model_params = {
-        "model": "gpt-4o",
-        "temperature": 1.0,
-        "max_tokens": 5000,
-    }
+    prompt = Prompt("Can you produce a short poem?")
 
-    response = Prompt("Can you produce a short poem?").query(**model_params)
+### Jinja2 Substitutions
 
-The response can be printed as a regular string, although it is a Python object of type `Response`:
-
-    print(response)
-
-By default, the `query()` function uses LiteLLM to interact with the chosen LLM. That function does several more things, such as parsing the response of the LLM for return values (see below).
-
-If you prefer to use your own way to interact with the LLM, you can supply a custom completion function to `query()`:
-
-    def custom_llm_completion(prompt: str, *args, **kwargs) -> str:
-        # Replace with your own LLM API call
-        message = llm(prompt)
-        return message
-
-    response = Prompt("Can you produce a short poem?").query(llm_completion=custom_llm_completion, **model_params)
-    print(response)
-
----
-
-## Jinja2 Substitutions
-
-Prympt supports full Jinja2 templating for dynamic prompt generation:
+_prympt_ supports full Jinja2 templating for dynamic prompt generation:
 
     sms_prompt = Prompt("Hi {{ name }}, your appointment is at {{ time }}.")
     print(sms_prompt(name="Alice", time="2 PM"))
@@ -103,7 +105,7 @@ Advance substitutions are also possible (Jinja2 iterations):
 
 ---
 
-## Combining Prompts
+### Combining Prompts
 
 Prompts can be concatenated using the `+` operator to build more complex interactions.
 
@@ -122,7 +124,7 @@ Prompts can be concatenated using the `+` operator to build more complex interac
 
 ---
 
-### Return Value
+### Annotating Outputs to Prompts
 
 Prompts can be annotated with expected return values:
 
@@ -138,7 +140,7 @@ The call to `query()` will automatically raise errors (or retry, if retries para
 
 ### Multiple Return Values
 
-Prympt supports prompts with multiple expected return values:
+_prympt_ supports prompts with multiple expected return values:
 
     prompt = Prompt("""
     Summarize the following news article:  {{news_body}} 
@@ -169,11 +171,43 @@ You can also specify the expected outputs as a list of `Output` objects in the P
 
 ---
 
+## Invoking Prompts
+
+_prympt_’s main entry point is the `Prompt` class. Here’s a simple example that uses it to generate a poem:
+
+    from prympt import Prompt
+
+    model_params = {
+        "model": "gpt-4o",
+        "temperature": 1.0,
+        "max_tokens": 5000,
+    }
+
+    response = Prompt("Can you produce a short poem?").query(**model_params)
+
+The response can be printed as a regular string, although it is a Python object of type `Response`:
+
+    print(response)
+
+By default, the `query()` function uses LiteLLM to interact with the chosen LLM. That function does several more things, such as parsing the response of the LLM for return values (see below).
+
+If you prefer to use your own way to interact with the LLM, you can supply a custom completion function to `query()`:
+
+    def custom_llm_completion(prompt: str, *args, **kwargs) -> str:
+        # Replace with your own LLM API call
+        message = llm(prompt)
+        return message
+
+    response = Prompt("Can you produce a short poem?").query(llm_completion=custom_llm_completion, **model_params)
+    print(response)
+
+---
+
 ## Error Control
 
 ### Automatic LLM Query Error Recovery
 
-Prympt includes an automatic retry mechanism for queries. You can specify the number of retries if the LLM response does not match the expected output structure:
+_prympt_ includes an automatic retry mechanism for queries. You can specify the number of retries if the LLM response does not match the expected output structure:
 
     prompt = Prompt("Generate Python function that prints weekday, from any given date").returns("python", "python code goes here")
     response = prompt.query(retries=5, **model_params)  # Default number of retries is 3
@@ -181,13 +215,13 @@ Prympt includes an automatic retry mechanism for queries. You can specify the nu
 
 ### Warnings
 
-Prympt will issue warnings in cases such as:
+_prympt_ will issue warnings in cases such as:
 - Errors during Jinja2 template rendering (e.g., undefined variables or incorrect syntax).
 - Transient errors during `Prompt.query()` when retries are in progress.
 
 ### Exceptions
 
-Prympt defines a hierarchy of exceptions for granular error handling when retries fail:
+_prympt_ defines a hierarchy of exceptions for granular error handling when retries fail:
 
 - **MalformedOutput:** Raised by `Prompt.returns()` and the `Output` constructor when:
   - The output name is invalid (must be a valid Python identifier: [a-z_][a-z0-9_-]*).
@@ -204,7 +238,7 @@ All these custom exceptions inherit from a common Exception class `PromptError`.
 
 ### Setting Up the Development Environment
 
-Install Prympt along with its development dependencies:
+Install _prympt_ along with its development dependencies:
 
     pip install prympt[dev]
 

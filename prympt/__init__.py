@@ -5,6 +5,7 @@ from .exceptions import (
     ConcatenationError,
     MalformedOutput,
     PromptError,
+    ReplacementError,
     ResponseError,
 )
 from .output import Output
@@ -12,9 +13,10 @@ from .prompt import Prompt
 from .response import Response
 
 __all__ = [
+    "ConcatenationError",
+    "ReplacementError",
     "MalformedOutput",
     "PromptError",
-    "ConcatenationError",
     "ResponseError",
     "Output",
     "Prompt",
