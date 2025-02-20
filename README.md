@@ -112,7 +112,7 @@ Prompts can be concatenated using the `+` operator to build more complex interac
         company_name="TechStore"
     ))
 
-### Annotating Outputs to Prompts
+### Annotating Prompts with Outputs
 
 Prompts can be annotated with expected return values:
 
