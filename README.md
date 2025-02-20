@@ -95,8 +95,6 @@ Advance substitutions are also possible (Jinja2 iterations):
     """)
     print(order_prompt(items=["Laptop", "Mouse", "Keyboard"]))
 
----
-
 ### Combining Prompts
 
 Prompts can be concatenated using the `+` operator to build more complex interactions.
@@ -114,8 +112,6 @@ Prompts can be concatenated using the `+` operator to build more complex interac
         company_name="TechStore"
     ))
 
----
-
 ### Annotating Outputs to Prompts
 
 Prompts can be annotated with expected return values:
@@ -127,8 +123,6 @@ Prompts can be annotated with expected return values:
 Returned values are automatically parsed and attached as member variables to the response. This approach makes it simple to extract and use them.
 
 The call to `query()` will automatically raise errors (or retry, if retries parameter is set to >= 1, see below) when the values provided by the LLM do not match the specified types or number.
-
----
 
 ### Multiple Return Values
 
