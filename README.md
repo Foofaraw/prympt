@@ -38,8 +38,8 @@ You can give the template parameter 'movie_review' a specific value, and query t
 To summarize, the package provides these main functionalities:
 
 - **Dynamic Prompt Composition:** Leverage enhanced [Jinja2](https://jinja.palletsprojects.com/) templating to easily substitute variables, iterate over collections.
-- **Structured Output Definitions:** Annotate your prompts with expected output formats with types (e.g., **int**, **float**) so that responses from LLMs can be automatically verified, parsed, and validated.
-- **Combine prompts:** Seamlessly combine multiple prompt templates and their outputs using the **+** operator for modular, reusable prompts.
+- **Structured Output Definitions:** Annotate your prompts with expected output formats with types (e.g., `int`, `float`) so that responses from LLMs can be automatically verified, parsed, and validated.
+- **Combine prompts:** Seamlessly combine multiple prompt templates and their outputs using the `+` operator for modular, reusable prompts.
 - **Robust Error Handling:** Built-in mechanisms automatically retry and recover from common LLM response errors or malformed outputs, ensuring reliable interactions even when outputs deviate from expectations.
 - **Flexible LLM Integration:** `prympt` integrates by default with [LiteLLM](https://github.com/BerriAI/litellm), which supports over 100 LLM APIs, and also allows you to connect to any LLM API using custom code or your preferred provider.
 
@@ -53,7 +53,7 @@ Install from PyPI using pip:
 
 ### Environment Configuration
 
-Set up your environment by defining the necessary API keys. You can add these to an **.env** file or set them in your environment.
+Set up your environment by defining the necessary API keys. You can add these to an `.env` file or set them in your environment.
 
 - **For OpenAI:**
 
@@ -72,7 +72,7 @@ See [LiteLLM providers](https://docs.litellm.ai/docs/providers/) for further inf
 
 ### Creating a Prompt Object
 
-`prympt`’s main entry point is the **Prompt** class. Here’s a simple example that uses it to compose a prompt that creates a poem:
+`prympt`’s main entry point is the `Prompt` class. Here’s a simple example that uses it to compose a prompt that creates a poem:
 
     from prympt import Prompt
 
@@ -99,7 +99,7 @@ Advanced substitutions are also possible (Jinja2 iterations):
 
 ### Combining Prompts
 
-Prompts can be concatenated using the **+** operator to build more complex interactions.
+Prompts can be concatenated using the `+` operator to build more complex interactions.
 
     greeting = Prompt("Dear {{ customer_name }},\n")
     body = Prompt("We are pleased to inform you that your order (Order #{{ order_number }}) has been shipped and is expected to arrive by {{ delivery_date }}.\n")
@@ -116,16 +116,16 @@ Prompts can be concatenated using the **+** operator to build more complex inter
 
 ### Annotating Prompts with Outputs
 
-Prompts can be annotated with expected outputs using the **returns** method:
+Prompts can be annotated with expected outputs using the `returns` method:
 
     prompt = Prompt("What is the meaning of life, the universe, and everything?")
     prompt = prompt.returns(name="meaning", type="int").query(**model_params)
 
-The method **returns** has the same parameters as the object **Output** constructor:
+The method `returns` has the same parameters as the object `Output`constructor:
 
-- name (str): name of the output (and name of property in the **Response** object)
+- name (str): name of the output (and name of property in the `Response`object)
 - description (str): description of output
-- type (str): expected type of the output (e.g. **int**, **float**, **str**)
+- type (str): expected type of the output (e.g. `int`, `float`, `str`)
 
 Each prompt can have multiple output annotations:
 
@@ -134,7 +134,7 @@ Each prompt can have multiple output annotations:
     Also, provide a sentiment score (scale from -1 to 1) for the news article.
     """).returns("summary", "A concise summary of the news article").returns(name="sentiment", type="float")
 
-Outputs can also be specified as a list of **Output** objects in the Prompt constructor:
+Outputs can also be specified as a list of `Output` objects in the Prompt constructor:
 
     from prympt import Output
 
@@ -169,7 +169,7 @@ We can extend the previous example to query the LLM with the prompt:
 
     response = Prompt("Can you produce a short poem?").query(**model_params)
 
-The method **query** does several more things, such as parsing the response of the LLM for return values (see below). It returns a **Response** object that contains the prompt outputs as member variables. This approach makes it simple to extract and use them.
+The method `query` does several more things, such as parsing the response of the LLM for return values (see below). It returns a `Response` object that contains the prompt outputs as member variables. This approach makes it simple to extract and use them.
 
 ### Automatic Query Recovery
 
@@ -179,15 +179,15 @@ The method **query** does several more things, such as parsing the response of t
     response = prompt.query(retries=5, **model_params)  # Default number of retries is 3
     print(response)
 
-When the **retries** parameter of the **query** method is set to >= 1, the call to **query** will automatically retry the call to the LLM if the LLM's does not reply with the correct outputs (e.g. the LLM provided outputs that cannot be parsed, or do not match the prompt's outputs).
+When the `retries` parameter of the `query` method is set to >= 1, the call to `query` will automatically retry the call to the LLM if the LLM's does not reply with the correct outputs (e.g. the LLM provided outputs that cannot be parsed, or do not match the prompt's outputs).
 
-When the **query** method runs out of retries, it will raise an **ResponseError** exception, indicating the last error found in the LLM's response (see below).
+When the `query` method runs out of retries, it will raise an **ResponseError** exception, indicating the last error found in the LLM's response (see below).
 
 ### Custom LLM Interfacing
 
-By default **query** uses LiteLLM to interact with the chosen LLM.
+By default `query` uses LiteLLM to interact with the chosen LLM.
 
-If you prefer to use your own way to interact with the LLM, you can supply a custom completion function to **query**:
+If you prefer to use your own way to interact with the LLM, you can supply a custom completion function to `query`:
 
     def custom_llm_completion(prompt: str, *args, **kwargs) -> str:
         # Replace with your own LLM API call
@@ -206,20 +206,20 @@ If you prefer to use your own way to interact with the LLM, you can supply a cus
 
 `prympt` will issue warnings in cases such as:
 - Errors during Jinja2 template rendering (e.g., undefined variables or incorrect syntax).
-- Transient errors during **Prompt.query** when retries are in progress.
+- Transient errors during `Prompt.query` when retries are in progress.
 
 ### Exceptions
 
 `prympt` defines a hierarchy of exceptions for granular error handling when retries fail:
 
-- **MalformedOutput:** Raised by **Prompt.returns** and the **Output** constructor when:
+- **MalformedOutput:** Raised by `Prompt.returns` and the `Output` constructor when:
   - The output name is invalid (must be a valid Python identifier: [a-z_][a-z0-9_-]*).
-  - The specified type cannot be parsed (must be a valid Python type, e.g., **int**, **float**).
+  - The specified type cannot be parsed (must be a valid Python type, e.g., `int`, `float`).
   - The LLM provides a value that cannot be converted to the expected type.
 - **ConcatenationError:** Raised when attempting to add a prompt to an unsupported type.
-- **ResponseError:** Raised by **Prompt.query** when the LLM response does not match the expected output structure (e.g., incorrect number, name, or type of outputs).
+- **ResponseError:** Raised by `Prompt.query` when the LLM response does not match the expected output structure (e.g., incorrect number, name, or type of outputs).
 
-All these custom exceptions inherit from a common Exception class **PromptError**.
+All these custom exceptions inherit from a common Exception class `PromptError`.
 
 ---
 
