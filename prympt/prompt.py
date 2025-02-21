@@ -5,9 +5,9 @@ from __future__ import (  # Required for forward references in older Python vers
     annotations,
 )
 
+import copy
 import inspect
 import json
-import copy
 import warnings
 from typing import Any, List, Tuple, Union
 
@@ -45,7 +45,9 @@ class Prompt:
             if name not in index_for_name:
                 index_for_name[name] = index
             else:
-                errors += [ f"Found outputs at positions {index_for_name[name]}, {index} with same name: '{name}'" ]
+                errors += [
+                    f"Found outputs at positions {index_for_name[name]}, {index} with same name: '{name}'"
+                ]
         if errors:
             raise PromptError("\n".join(errors))
 
@@ -120,7 +122,10 @@ class Prompt:
             for output in outputs_copy:
                 output.content = "... value for this output goes here ..."
 
-            string += "\nProvide your response inside an XML such as this:\n" + outputs_to_xml(self.outputs)
+            string += (
+                "\nProvide your response inside an XML such as this:\n"
+                + outputs_to_xml(self.outputs)
+            )
 
         return string
 
@@ -143,7 +148,7 @@ class Prompt:
         Returns:
             set[Any]: List of variable names present in the template.
         """
-        
+
         try:
             return extract_jinja_variables(self.template)
         except TemplateSyntaxError as e:
@@ -193,8 +198,8 @@ class Prompt:
             k: v for k, v in kwargs.items() if k not in response_params
         }
 
-        errors = []
-        
+        errors: List[str] = []
+
         for retry_time in range(retries):
 
             try:
@@ -204,21 +209,25 @@ class Prompt:
                     llm_completion_kwargs["temperature"] = 1.0
 
                 prompt_text = self.__str__()
-                
+
                 if errors:
-                    prompt_text += "\n\nMake sure to avoid the following errors in the XML:\n"
+                    prompt_text += (
+                        "\n\nMake sure to avoid the following errors in the XML:\n"
+                    )
                     prompt_text += "\n- ".join(errors)
-                    
+
                 raw_response_text = llm_completion(
                     prompt_text, *args, **llm_completion_kwargs
                 )
                 response = Response(raw_response_text, **response_kwargs)
 
                 new_errors = []
-                
+
                 # Check that expected and responded outputs are compatible
                 if len(self.outputs) != len(response):
-                    new_errors += [f"Expected {len(self.outputs)} outputs in LLM response, but got {len(response)}"]
+                    new_errors += [
+                        f"Expected {len(self.outputs)} outputs in LLM response, but got {len(response)}"
+                    ]
                     errors += new_errors
                     raise ResponseError("\n".join(new_errors))
 
@@ -227,9 +236,13 @@ class Prompt:
                     zip(self.outputs, response)
                 ):
                     if defined.name != responded.name:
-                        new_errors += [f"Name for output at position {index} ('{defined.name}') differs from the one provided by LLM ('{responded.name}')\n"]
+                        new_errors += [
+                            f"Name for output at position {index} ('{defined.name}') differs from the one provided by LLM ('{responded.name}')\n"
+                        ]
                     if defined.type != responded.type:
-                        new_errors += [f"Type for output at position {index} ('{defined.type}') differs from the one provided by LLM ('{responded.type}')\n"]
+                        new_errors += [
+                            f"Type for output at position {index} ('{defined.type}') differs from the one provided by LLM ('{responded.type}')\n"
+                        ]
 
                 if new_errors:
                     errors += new_errors

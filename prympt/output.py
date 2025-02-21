@@ -34,6 +34,7 @@ class Output:
             if self.type != "str":
                 self.content = convert_to_Python_type(self.content, self.type)
 
+
 def outputs_to_xml(outputs: List[Output]) -> str:
     """
     Convert a list of `Output` objects into an XML string.
