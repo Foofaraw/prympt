@@ -7,21 +7,16 @@ from __future__ import (  # Required for forward references in older Python vers
 
 import inspect
 import json
+import copy
 import warnings
 from typing import Any, List, Tuple, Union
 
 from jinja2 import TemplateSyntaxError
 
-from .exceptions import ConcatenationError, ReplacementError, ResponseError
+from .exceptions import ConcatenationError, PromptError, ReplacementError, ResponseError
 from .output import Output, outputs_to_xml
 from .response import Response
 from .utils import extract_jinja_variables, jinja_substitution, litellm_completion
-
-jinja_template_outputs = """
-
-Provide your response inside an XML such as this:
-
-"""
 
 
 class Prompt:
@@ -41,6 +36,18 @@ class Prompt:
         """
         self.template: str = template
         self.outputs: List[Output] = returns
+
+        # Make sure there are no outputs with duplicate names
+        errors = []
+        index_for_name = dict()
+        for index, output in enumerate(returns):
+            name = output.name
+            if name not in index_for_name:
+                index_for_name[name] = index
+            else:
+                errors += [ f"Found outputs at positions {index_for_name[name]}, {index} with same name: '{name}'" ]
+        if errors:
+            raise PromptError("\n".join(errors))
 
     def __call__(self, *args: Any, **kwargs: Any) -> "Prompt":
         """Render the prompt with the given keyword arguments.
@@ -102,26 +109,18 @@ class Prompt:
             str: The rendered prompt string.
         """
 
-        try:
-            variables = extract_jinja_variables(self.template)
-
-            if variables:
-                warning = f"Tried to render prompt that still has undefined Jinja2 variables: ({', '.join(sorted(variables))})"
-                warnings.warn(warning, RuntimeWarning)
-        except TemplateSyntaxError as e:
-            warning = f"Tried to render prompt that contains incorrect Jinja2 template syntax ({str(e)})"
+        if variables := self.get_variables():
+            warning = f"Tried to render prompt that still has undefined Jinja2 variables: ({', '.join(sorted(variables))})"
             warnings.warn(warning, RuntimeWarning)
 
         string = self.template
 
         if self.outputs:
-            outputs_copy = self.outputs.copy()
+            outputs_copy = copy.deepcopy(self.outputs)
             for output in outputs_copy:
                 output.content = "... value for this output goes here ..."
 
-            string += jinja_substitution(
-                jinja_template_outputs, outputs=self.outputs
-            ) + outputs_to_xml(self.outputs)
+            string += "\nProvide your response inside an XML such as this:\n" + outputs_to_xml(self.outputs)
 
         return string
 
@@ -144,7 +143,13 @@ class Prompt:
         Returns:
             set[Any]: List of variable names present in the template.
         """
-        return extract_jinja_variables(self.template)
+        
+        try:
+            return extract_jinja_variables(self.template)
+        except TemplateSyntaxError as e:
+            warning = f"Tried to render prompt that contains incorrect Jinja2 template syntax ({str(e)})"
+            warnings.warn(warning, RuntimeWarning)
+            return []
 
     def returns(self, *args: Any, **kwargs: Any) -> "Prompt":
         """Add an output to the prompt.
@@ -188,6 +193,8 @@ class Prompt:
             k: v for k, v in kwargs.items() if k not in response_params
         }
 
+        errors = []
+        
         for retry_time in range(retries):
 
             try:
@@ -196,28 +203,37 @@ class Prompt:
                     warnings.warn("Setting temperature to 1!", RuntimeWarning)
                     llm_completion_kwargs["temperature"] = 1.0
 
+                prompt_text = self.__str__()
+                
+                if errors:
+                    prompt_text += "\n\nMake sure to avoid the following errors in the XML:\n"
+                    prompt_text += "\n- ".join(errors)
+                    
                 raw_response_text = llm_completion(
-                    self.__str__(), *args, **llm_completion_kwargs
+                    prompt_text, *args, **llm_completion_kwargs
                 )
                 response = Response(raw_response_text, **response_kwargs)
 
+                new_errors = []
+                
                 # Check that expected and responded outputs are compatible
                 if len(self.outputs) != len(response):
-                    raise ResponseError(
-                        f"Expected {len(self.outputs)} outputs in LLM response, but got {len(response)}"
-                    )
+                    new_errors += [f"Expected {len(self.outputs)} outputs in LLM response, but got {len(response)}"]
+                    errors += new_errors
+                    raise ResponseError("\n".join(new_errors))
 
-                errors = ""
+                new_errors = []
                 for index, (defined, responded) in enumerate(
                     zip(self.outputs, response)
                 ):
                     if defined.name != responded.name:
-                        errors += f"Name for output at position {index} ('{defined.name}') differs from the one provided by LLM ('{responded.name}')\n"
+                        new_errors += [f"Name for output at position {index} ('{defined.name}') differs from the one provided by LLM ('{responded.name}')\n"]
                     if defined.type != responded.type:
-                        errors += f"Type for output at position {index} ('{defined.type}') differs from the one provided by LLM ('{responded.type}')\n"
+                        new_errors += [f"Type for output at position {index} ('{defined.type}') differs from the one provided by LLM ('{responded.type}')\n"]
 
-                if errors:
-                    raise ResponseError(errors)
+                if new_errors:
+                    errors += new_errors
+                    raise ResponseError("\n".join(new_errors))
 
                 break
 

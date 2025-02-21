@@ -20,6 +20,16 @@ def test_single_replacement() -> None:
     assert str(prompt(prompt="prompt")) == "This is a prompt"
 
 
+def test_incorrect_Jinja2_syntax() -> None:
+    """Test single variable replacement in the prompt template with incorrect Jinja2 syntax."""
+    prompt = Prompt("This is a {{ prompt")
+    assert prompt.template == "This is a {{ prompt"
+    
+    with pytest.warns(
+        RuntimeWarning, match="unexpected end of template, expected 'end of print statement'"
+    ):    
+        prompt.__str__()
+
 def test_multiple_replacement() -> None:
     """Test multiple variable replacements in the prompt template."""
     prompt = Prompt("This is a {{ prompt }}, so is {{ this }}")
@@ -28,6 +38,13 @@ def test_multiple_replacement() -> None:
         prompt(prompt="Prompt", this="This").template == "This is a Prompt, so is This"
     )
 
+def test_multiple_replacement_positional_and_keyword_arguments() -> None:
+    """Test multiple variable replacements in the prompt template with positional and keyword arguments."""
+    prompt = Prompt("This is a {{ prompt }}, so is {{ this }}")
+    assert prompt.template == "This is a {{ prompt }}, so is {{ this }}"
+    assert (
+        prompt("Prompt", this="This").template == "This is a Prompt, so is This"
+    )
 
 template_multiple_variables_loop = """
 This is a {{ prompt }}, so is {{ this }}.
@@ -183,3 +200,49 @@ def test_replace_errors() -> None:
         ReplacementError, match="Got multiple values for template variable 'var1'"
     ):
         prompt("value1", "value2", var1="value1")
+
+
+def test_str_does_not_mutate_prompt() -> None:
+    
+    prompt1 = Prompt("Indicate the color of the sky").returns(
+        name="text", description="color, e.g. red"
+    )
+    prompt2 = (
+        Prompt("Suggest some code and json data")
+        .returns(name="python", description="python code goes here")
+        .returns(name="json", content='["a sample string"]')
+    )
+    
+    prompt = prompt1 + prompt2
+    
+    expected_outputs = [
+        Output(name="text", description="color, e.g. red"),
+        Output(name="python", description="python code goes here"),
+        Output(name="json", content='["a sample string"]'),
+    ]
+
+    assert prompt.template == "Indicate the color of the sky\nSuggest some code and json data"
+    assert prompt.outputs == expected_outputs
+
+    prompt.__str__()
+
+    assert prompt.template == "Indicate the color of the sky\nSuggest some code and json data"
+    assert prompt.outputs == expected_outputs
+
+
+def test_check_duplicate_names() -> None:
+    
+    prompt1 = Prompt("Indicate the color of the sky").returns(
+        name="text", description="color, e.g. red"
+    )
+    prompt2 = (
+        Prompt("Suggest some code and json data")
+        .returns(name="json", content='["a sample string"]')
+        .returns(name="text", description="code goes here")
+    )
+
+    with pytest.raises(
+        PromptError, match="Found outputs at positions 0, 2 with same name: 'text'"
+    ):    
+        prompt1 + prompt2
+    
