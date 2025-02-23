@@ -2,16 +2,36 @@
 # Licensed under the MIT License (see LICENSE file for details).
 
 import ast
-import builtins
-import json
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import Any, List, Union
 from xml.dom import minidom
 
-from .exceptions import MalformedOutput
-from .utils import convert_to_Python_type
+from .exceptions import MalformedOutput, ResponseError
+
+
+def convert_to_Python_type(value_str: str, type_str: str) -> Any:
+    safe_globals = {
+        "__builtins__": None,
+        "int": int,
+        "float": float,
+        "str": str,
+        "bool": bool,
+    }
+
+    if type_str not in safe_globals:
+        raise ResponseError(
+            f"Tried to create Output with a non-standard basic Python type: '{type_str}'"
+        )
+
+    try:
+        parsed_type = eval(type_str, safe_globals)
+        return parsed_type(ast.literal_eval(value_str))
+    except SyntaxError:
+        raise MalformedOutput(
+            f"Could not cast parameter value '{value_str}' to suggested type '{type_str}'"
+        )
 
 
 @dataclass

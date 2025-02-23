@@ -105,22 +105,30 @@ def test_multiple_results() -> None:
     """Test adding multiple return values to the prompt."""
     prompt1 = (
         Prompt("Suggest some code and json data")
-        .returns(name="python", content="python code goes here")
-        .returns(name="json", content='["a sample string"]')
+        .returns(name="python", description="python code")
+        .returns(name="json", description="json code")
     )
 
     expected_outputs = [
-        Output(name="python", content="python code goes here"),
-        Output(name="json", content='["a sample string"]'),
+        Output(name="python", description="python code"),
+        Output(name="json", description="json code"),
     ]
 
     obtained_outputs = xml_to_outputs(prompt1.__str__())
 
     # Query method modifies content to indicate LLM where to put output values
     for expected, obtained in zip(expected_outputs, obtained_outputs):
-        obtained.content = expected.content
+        assert vars(expected).keys() == vars(obtained).keys()
 
-    assert obtained_outputs == expected_outputs
+        for attr in vars(expected):
+            if attr != "content":
+                assert (
+                    vars(expected)[attr] == vars(obtained)[attr]
+                ), f"Attribute '{attr}' in expected and obtained object differs: '{vars(expected)[attr]}', '{vars(obtained)[attr]}'"
+            else:
+                assert (
+                    vars(expected)[attr] != vars(obtained)[attr]
+                ), f"Attribute 'content' in expected and obtained object is the same: '{vars(expected)[attr]}'"
 
     prompt2 = Prompt("Suggest some code and json data", returns=expected_outputs)
     assert prompt1.__str__() == prompt2.__str__()

@@ -7,16 +7,58 @@ from __future__ import (  # Required for forward references in older Python vers
 
 import copy
 import inspect
-import json
 import warnings
-from typing import Any, List, Tuple, Union
+from typing import Any, Dict, List
 
-from jinja2 import TemplateSyntaxError
+from jinja2 import Environment, StrictUndefined, TemplateSyntaxError, nodes
+from jinja2.visitor import NodeVisitor
+from litellm import completion
 
 from .exceptions import ConcatenationError, PromptError, ReplacementError, ResponseError
 from .output import Output, outputs_to_xml
 from .response import Response
-from .utils import extract_jinja_variables, jinja_substitution, litellm_completion
+
+_jinja_env = Environment(undefined=StrictUndefined)
+
+
+def _extract_jinja_variables(template_source: str) -> List[str]:
+    class OrderedVariableCollector(NodeVisitor):
+        def __init__(self) -> None:
+            self.variables: List[str] = []
+
+        def visit_Name(self, node: nodes.Name) -> None:
+            # The attribute 'name' may not be recognized by mypy on jinja2.nodes.Name.
+            if node.name not in self.variables:
+                self.variables.append(node.name)
+            # generic_visit may be untyped.
+            self.generic_visit(node)
+
+        def visit_For(self, node: nodes.For) -> None:
+            # Only visit the 'iter' part. The attribute 'iter' might not be recognized.
+            self.visit(node.iter)
+            # Skip visiting node.target, node.body, and node.else_ to avoid loop-local variables.
+
+    env = Environment()
+    parsed_template = env.parse(template_source)
+    collector = OrderedVariableCollector()
+    collector.visit(parsed_template)
+    return collector.variables
+
+
+def _jinja_substitution(template: str, **kwargs: Any) -> str:
+    """
+    Substitutes variables into a Jinja2 template string and returns the rendered result.
+
+    :param template: str - The Jinja2 template string.
+    :param kwargs: dict - Variables to substitute into the template.
+    :return: str - The rendered template with variables substituted.
+    """
+    return _jinja_env.from_string(template).render(**kwargs)
+
+
+def litellm_completion(prompt: str, *args: List[Any], **kwargs: Dict[str, Any]) -> str:
+    response = completion(messages=[dict(role="user", content=prompt)], *args, **kwargs)
+    return str(response.choices[0].message.content)
 
 
 class Prompt:
@@ -76,7 +118,9 @@ class Prompt:
                 )
             kwargs[k] = v
 
-        return Prompt(jinja_substitution(self.template, **kwargs), returns=self.outputs)
+        return Prompt(
+            _jinja_substitution(self.template, **kwargs), returns=self.outputs
+        )
 
     def __add__(self, other: Any) -> "Prompt":
         """Concatenate two prompts.
@@ -150,7 +194,7 @@ class Prompt:
         """
 
         try:
-            return extract_jinja_variables(self.template)
+            return _extract_jinja_variables(self.template)
         except TemplateSyntaxError as e:
             warning = f"Tried to render prompt that contains incorrect Jinja2 template syntax ({str(e)})"
             warnings.warn(warning, RuntimeWarning)
