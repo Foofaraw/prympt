@@ -118,13 +118,13 @@ class Prompt:
         string = self.template
 
         if self.outputs:
-            outputs_copy = copy.deepcopy(self.outputs)
-            for output in outputs_copy:
+            outputs_with_content_indications = copy.deepcopy(self.outputs)
+            for output in outputs_with_content_indications:
                 output.content = "... value for this output goes here ..."
 
             string += (
                 "\nProvide your response inside an XML such as this:\n"
-                + outputs_to_xml(self.outputs)
+                + outputs_to_xml(outputs_with_content_indications)
             )
 
         return string
