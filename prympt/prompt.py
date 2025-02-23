@@ -164,7 +164,14 @@ class Prompt:
         if self.outputs:
             outputs_with_content_indications = copy.deepcopy(self.outputs)
             for output in outputs_with_content_indications:
-                output.content = "... value for this output goes here ..."
+                if output.name:
+                    output.content = (
+                        f"<![CDATA[... value for output {output.name} goes here ...]]>"
+                    )
+                else:
+                    output.content = (
+                        "<![CDATA[... value for this output goes here ...]]>"
+                    )
 
             string += (
                 "\nProvide your response inside an XML such as this:\n"
@@ -296,7 +303,7 @@ class Prompt:
 
             except Exception as e:
                 warnings.warn(
-                    f"WARNING: failed LLM query (try {retry_time} out of {retries}), reason: {str(e)}",
+                    f"WARNING: failed LLM query (try {retry_time} out of {retries}), reason: {str(e)} ({type(e)})",
                     RuntimeWarning,
                 )
                 if retry_time + 1 == retries:
