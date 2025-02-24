@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from typing import Any, List, Union
 from xml.dom import minidom
 
+from lxml import etree
+
 from .exceptions import MalformedOutput, ResponseError
 
 
@@ -54,30 +56,19 @@ class Output:
             if self.type != "str":
                 self.content = convert_to_Python_type(self.content, self.type)
 
-        # If LLM included the '<![CDATA[ ... ]]>' with special characters '&lt;', '&gt;'
-        # We remove that from the content
-        if (
-            self.content and
-            self.content.startswith("<![CDATA[") and
-            self.content.endswith("]]>")
-            ):
-            
-            self.content = self.content[ len('<![CDATA[') : -len(']]>') ]
-        
-        
 
 def outputs_to_xml(outputs: List[Output]) -> str:
     """
-    Convert a list of `Output` objects into an XML string.
-    - The fields `type`, `name`, and `description` are XML attributes.
-    - The `content` field is the text body of the <output> element.
+    Convert a list of Output objects into an XML string.
+    - The fields type, name, and description are XML attributes.
+    - The content field is wrapped inside a CDATA section within the <output> element.
     """
-    root = ET.Element("outputs")  # You can choose any root tag name you like
+    root = etree.Element("outputs")  # Root element
 
     for out in outputs:
-        output_elem = ET.SubElement(root, "output")
+        output_elem = etree.SubElement(root, "output")
 
-        # Convert type to string if not already
+        # Set attributes
         if out.name is not None:
             output_elem.set("name", out.name)
         if out.description is not None:
@@ -85,16 +76,16 @@ def outputs_to_xml(outputs: List[Output]) -> str:
         if out.type is not None:
             output_elem.set("type", out.type)
 
-        # content goes as text inside the <output> element
+        # Wrap content in a CDATA section
         if out.content is not None:
-            output_elem.text = str(out.content)
+            output_elem.text = etree.CDATA(str(out.content))
 
     # Convert the ElementTree to a string
-    xml_str = ET.tostring(root, encoding="unicode").strip()
+    xml_str = etree.tostring(root, encoding="unicode").strip()
 
-    # Indent
+    # Indent using minidom
     dom = minidom.parseString(xml_str)
-    pretty_xml_str = str(dom.toprettyxml(indent="  "))  # Use 2 spaces for indentation
+    pretty_xml_str = dom.toprettyxml(indent="  ")  # Use 2 spaces for indentation
 
     # Remove the XML declaration line if present:
     lines = pretty_xml_str.splitlines()
