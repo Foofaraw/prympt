@@ -54,6 +54,17 @@ class Output:
             if self.type != "str":
                 self.content = convert_to_Python_type(self.content, self.type)
 
+        # If LLM included the '<![CDATA[ ... ]]>' with special characters '&lt;', '&gt;'
+        # We remove that from the content
+        if (
+            self.content and
+            self.content.startswith("<![CDATA[") and
+            self.content.endswith("]]>")
+            ):
+            
+            self.content = self.content[ len('<![CDATA[') : -len(']]>') ]
+        
+        
 
 def outputs_to_xml(outputs: List[Output]) -> str:
     """
