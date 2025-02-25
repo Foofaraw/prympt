@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "prympt"
-version = "1.0"
+version = "1.0.5"
 description = "A Python Package for LLM Prompting and Interfacing"
 readme = "README.md"
 authors = [{ name = "foofaraw (GitHub: foofaraw)", email = "foofaraw.github@gmail.com" }]
