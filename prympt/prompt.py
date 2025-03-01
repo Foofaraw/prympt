@@ -165,7 +165,7 @@ class Prompt:
             outputs_with_content_indications = copy.deepcopy(self.outputs)
             for output in outputs_with_content_indications:
                 if output.name:
-                    output.content = f"... value for output {output.name} goes here ..."
+                    output.content = f"... value for output '{output.name}' goes here ..."
                 else:
                     output.content = "... value for this output goes here ..."
 
