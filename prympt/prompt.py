@@ -204,6 +204,10 @@ class Prompt:
             return []
 
     def returns(self, *args: Any, **kwargs: Any) -> "Prompt":
+        warnings.warn("Prompt.returns() deprecated; use Prompt.output() instead.", DeprecationWarning, stacklevel=2)        
+        return self.output(*args, **kwargs)
+
+    def output(self, *args: Any, **kwargs: Any) -> "Prompt":
         """Add an output to the prompt.
 
         Args:
@@ -252,8 +256,9 @@ class Prompt:
             try:
 
                 if retry_time > 0:
-                    warnings.warn("Setting temperature to 1!", RuntimeWarning)
-                    llm_completion_kwargs["temperature"] = 1.0
+                    pass
+                    #warnings.warn("Setting temperature to 1!", RuntimeWarning)
+                    #llm_completion_kwargs["temperature"] = 1.0
 
                 prompt_text = self.__str__()
 

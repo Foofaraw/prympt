@@ -94,7 +94,7 @@ def test_single_result() -> None:
     prompt = Prompt("Indicate the color of the sky")
     assert prompt.__str__() == "Indicate the color of the sky"
 
-    prompt_returns = prompt.returns("text", "color, e.g. red")
+    prompt_returns = prompt.output("text", "color, e.g. red")
     prompt_returns2 = Prompt(
         "Indicate the color of the sky", returns=[Output("text", "color, e.g. red")]
     )
@@ -105,8 +105,8 @@ def test_multiple_results() -> None:
     """Test adding multiple return values to the prompt."""
     prompt1 = (
         Prompt("Suggest some code and json data")
-        .returns(name="python", description="python code")
-        .returns(name="json", description="json code")
+        .output(name="python", description="python code")
+        .output(name="json", description="json code")
     )
 
     expected_outputs = [
@@ -136,13 +136,13 @@ def test_multiple_results() -> None:
 
 def test_add_prompts() -> None:
     """Test adding two prompts together."""
-    prompt1 = Prompt("Indicate the color of the sky").returns(
+    prompt1 = Prompt("Indicate the color of the sky").output(
         name="text", description="color, e.g. red"
     )
     prompt2 = (
         Prompt("Suggest some code and json data")
-        .returns(name="python", description="python code goes here")
-        .returns(name="json", content='["a sample string"]')
+        .output(name="python", description="python code goes here")
+        .output(name="json", content='["a sample string"]')
     )
     expected_outputs = [
         Output(name="text", description="color, e.g. red"),
@@ -161,7 +161,7 @@ def test_add_prompts() -> None:
 
 def test_add_prompt_string() -> None:
     """Test adding a string to a prompt."""
-    prompt = Prompt("Indicate the color of the sky").returns("text", "color, e.g. red")
+    prompt = Prompt("Indicate the color of the sky").output("text", "color, e.g. red")
     rendered_add_prompt_string = "Indicate the color of the sky\nDo it nicely, please"
     assert (
         (prompt + "Do it nicely, please")
@@ -181,7 +181,7 @@ def test_add_prompt_string() -> None:
 
 def test_add_prompt_none() -> None:
     """Test adding None to a prompt, expecting an error."""
-    prompt1 = Prompt("Indicate the color of the sky").returns("text", "color, e.g. red")
+    prompt1 = Prompt("Indicate the color of the sky").output("text", "color, e.g. red")
     with pytest.raises(PromptError):
         prompt1 += None
 
@@ -189,7 +189,7 @@ def test_add_prompt_none() -> None:
 def test_replace_keep_outputs() -> None:
     """Test the extraction of variables from the prompt template."""
 
-    prompt1 = Prompt("Test prompt {{var}}").returns("var1").returns("var2")
+    prompt1 = Prompt("Test prompt {{var}}").output("var1").output("var2")
 
     prompt2 = prompt1(var="test")
 
@@ -214,13 +214,13 @@ def test_replace_errors() -> None:
 
 def test_str_does_not_mutate_prompt() -> None:
 
-    prompt1 = Prompt("Indicate the color of the sky").returns(
+    prompt1 = Prompt("Indicate the color of the sky").output(
         name="text", description="color, e.g. red"
     )
     prompt2 = (
         Prompt("Suggest some code and json data")
-        .returns(name="python", description="python code goes here")
-        .returns(name="json", content='["a sample string"]')
+        .output(name="python", description="python code goes here")
+        .output(name="json", content='["a sample string"]')
     )
 
     prompt = prompt1 + prompt2
@@ -248,13 +248,13 @@ def test_str_does_not_mutate_prompt() -> None:
 
 def test_check_duplicate_names() -> None:
 
-    prompt1 = Prompt("Indicate the color of the sky").returns(
+    prompt1 = Prompt("Indicate the color of the sky").output(
         name="text", description="color, e.g. red"
     )
     prompt2 = (
         Prompt("Suggest some code and json data")
-        .returns(name="json", content='["a sample string"]')
-        .returns(name="text", description="code goes here")
+        .output(name="json", content='["a sample string"]')
+        .output(name="text", description="code goes here")
     )
 
     with pytest.raises(

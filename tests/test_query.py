@@ -50,16 +50,14 @@ def test_3_retries() -> None:
 
     for retries in range(2, 3):
         response_3_tries.counter = 0  # type: ignore[attr-defined]
-        with pytest.warns(RuntimeWarning, match="Setting temperature to 1!"):
-            with pytest.warns(RuntimeWarning, match="failed LLM query"):
-                with pytest.raises(ResponseError):
-                    prompt_3_tries.query(retries=retries, **query_params)
+        with pytest.warns(RuntimeWarning, match="failed LLM query"):
+            with pytest.raises(ResponseError):
+                prompt_3_tries.query(retries=retries, **query_params)
 
     response_3_tries.counter = 0  # type: ignore[attr-defined]
-    with pytest.warns(RuntimeWarning, match="Setting temperature to 1!"):
-        with pytest.warns(RuntimeWarning, match="failed LLM query"):
-            response = prompt_3_tries.query(retries=3, **query_params)
-            assert response.__str__() == response_3_tries_valid
+    with pytest.warns(RuntimeWarning, match="failed LLM query"):
+        response = prompt_3_tries.query(retries=3, **query_params)
+        assert response.__str__() == response_3_tries_valid
 
 
 prompt_wrong_type = """
