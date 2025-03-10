@@ -1,6 +1,10 @@
 # prympt: A Python Package for LLM Prompting and Interfacing
 
-`prympt` is an lightweight open source Python package designed to simplify typical interactions with Large Language Models (LLMs). It encapsulates boilerplate functionality for prompt composition and LLM response processing, such as templating, prompt combination, error handling, and structured output parsing, all in a minimalist package.
+`prympt` is an lightweight open source Python package designed to simplify typical interactions with Large Language Models (LLMs). It encapsulates boilerplate functionality for prompt composition and LLM response processing, such as:
+- Templating, prompt combination.
+- Structured output parsing.
+- Error handling.
+All in a minimalist package.
 
 `prympt` is free software (MIT license). Feedback and contributions to improve it are welcome!
 
