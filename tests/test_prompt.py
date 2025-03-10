@@ -96,7 +96,7 @@ def test_single_result() -> None:
 
     prompt_returns = prompt.output("text", "color, e.g. red")
     prompt_returns2 = Prompt(
-        "Indicate the color of the sky", returns=[Output("text", "color, e.g. red")]
+        "Indicate the color of the sky", outputs=[Output("text", "color, e.g. red")]
     )
     assert prompt_returns.__str__() == prompt_returns2.__str__()
 
@@ -130,7 +130,7 @@ def test_multiple_results() -> None:
                     vars(expected)[attr] != vars(obtained)[attr]
                 ), f"Attribute 'content' in expected and obtained object is the same: '{vars(expected)[attr]}'"
 
-    prompt2 = Prompt("Suggest some code and json data", returns=expected_outputs)
+    prompt2 = Prompt("Suggest some code and json data", outputs=expected_outputs)
     assert prompt1.__str__() == prompt2.__str__()
 
 

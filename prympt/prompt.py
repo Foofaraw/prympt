@@ -69,7 +69,7 @@ class Prompt:
         outputs (List[Output]): List of outputs.
     """
 
-    def __init__(self, template: str, returns: List[Output] = []):
+    def __init__(self, template: str, outputs: List[Output] = []):
         """Initialize a Prompt instance.
 
         Args:
@@ -77,12 +77,12 @@ class Prompt:
             returns (List[Output]): List of outputs
         """
         self.template: str = template
-        self.outputs: List[Output] = returns
+        self.outputs: List[Output] = outputs
 
         # Make sure there are no outputs with duplicate names
         errors = []
         index_for_name = dict()
-        for index, output in enumerate(returns):
+        for index, output in enumerate(outputs):
             name = output.name
             if name not in index_for_name:
                 index_for_name[name] = index
@@ -119,7 +119,7 @@ class Prompt:
             kwargs[k] = v
 
         return Prompt(
-            _jinja_substitution(self.template, **kwargs), returns=self.outputs
+            _jinja_substitution(self.template, **kwargs), outputs=self.outputs
         )
 
     def __add__(self, other: Any) -> "Prompt":
@@ -145,7 +145,7 @@ class Prompt:
 
         return Prompt(
             self.template + "\n" + other_prompt.template,
-            returns=self.outputs + other_prompt.outputs,
+            outputs=self.outputs + other_prompt.outputs,
         )
 
     def __str__(self) -> str:
@@ -165,7 +165,9 @@ class Prompt:
             outputs_with_content_indications = copy.deepcopy(self.outputs)
             for output in outputs_with_content_indications:
                 if output.name:
-                    output.content = f"... value for output '{output.name}' goes here ..."
+                    output.content = (
+                        f"... value for output '{output.name}' goes here ..."
+                    )
                 else:
                     output.content = "... value for this output goes here ..."
 
@@ -204,7 +206,11 @@ class Prompt:
             return []
 
     def returns(self, *args: Any, **kwargs: Any) -> "Prompt":
-        warnings.warn("Prompt.returns() deprecated; use Prompt.output() instead.", DeprecationWarning, stacklevel=2)        
+        warnings.warn(
+            "Prompt.returns() deprecated; use Prompt.output() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.output(*args, **kwargs)
 
     def output(self, *args: Any, **kwargs: Any) -> "Prompt":
@@ -257,8 +263,8 @@ class Prompt:
 
                 if retry_time > 0:
                     pass
-                    #warnings.warn("Setting temperature to 1!", RuntimeWarning)
-                    #llm_completion_kwargs["temperature"] = 1.0
+                    # warnings.warn("Setting temperature to 1!", RuntimeWarning)
+                    # llm_completion_kwargs["temperature"] = 1.0
 
                 prompt_text = self.__str__()
 
