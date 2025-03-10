@@ -15,12 +15,12 @@ This is an example that showcases the main features of `prympt`. The following c
     # Define a prompt with annotated output named 'title'
     prompt_title = Prompt(
         "Provide a title for the following movie review: {{movie_review}}",
-    ).returns("title")
+    ).output("title")
 
     # Define a prompt with annotated 'float' output named 'sentiment'
     prompt_sentiment = Prompt(
         "Provide a sentiment score (scale from -1 to 1)."
-    ).returns("sentiment", type="float")
+    ).output("sentiment", type="float")
 
     prompt = prompt_title + prompt_sentiment
 
@@ -119,7 +119,7 @@ Prompts can be concatenated using the `+` operator to build more complex interac
 Prompts can be annotated with expected outputs using the `returns` method:
 
     prompt = Prompt("What is the meaning of life, the universe, and everything?")
-    prompt = prompt.returns(name="meaning", type="int").query(**model_params)
+    prompt = prompt.output(name="meaning", type="int").query(**model_params)
 
 The method `returns` has the same parameters as the object `Output`constructor:
 
@@ -132,7 +132,7 @@ Each prompt can have multiple output annotations:
     prompt = Prompt("""
     Summarize the following news article:  {{news_body}} 
     Also, provide a sentiment score (scale from -1 to 1) for the news article.
-    """).returns("summary", "A concise summary of the news article").returns(name="sentiment", type="float")
+    """).output("summary", "A concise summary of the news article").output(name="sentiment", type="float")
 
 Outputs can also be specified as a list of `Output` objects in the Prompt constructor:
 
@@ -175,7 +175,7 @@ The method `query` does several more things, such as parsing the response of the
 
 `prympt` includes an automatic retry mechanism for queries. You can specify the number of retries if the LLM response does not match the expected output structure:
 
-    prompt = Prompt("Generate Python function that prints weekday, from any given date").returns("python", "python code goes here")
+    prompt = Prompt("Generate Python function that prints weekday, from any given date").output("python", "python code goes here")
     response = prompt.query(retries=5, **model_params)  # Default number of retries is 3
     print(response)
 
