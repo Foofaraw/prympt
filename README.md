@@ -39,6 +39,23 @@ You can give the template parameter 'movie_review' a specific value, and query t
     print(response.title)      # Expected output: A one-line title for the review.
     print(response.sentiment)  # Expected output: A sentiment score between -1 and 1.
 
+Alternatively, you can also retrieve a string representation from the prompt, call the llm with any procedure, and parse it with a `Response` object:
+
+    from litellm import completion
+    from prympt import Respose
+
+    # Use any method you need to obtain the LLM's response to the prompt
+    prompt_str = prompt(movie_review).to_string()
+
+    text_response = completion(messages=[dict(role="user", content=prompt_str)]).choices[0].message.content
+
+    # Create and use Response object from the LLM's response
+    response = Response(text_response)
+    
+    print(response.title)      # Expected output: A one-line title for the review.
+    print(response.sentiment)  # Expected output: A sentiment score between -1 and 1.
+
+
 To summarize, the package provides these main functionalities:
 
 - **Dynamic Prompt Composition:** Leverage enhanced [Jinja2](https://jinja.palletsprojects.com/) templating to easily substitute variables, iterate over collections.
@@ -175,17 +192,46 @@ We can extend the previous example to query the LLM with the prompt:
 
 The method `query` does several more things, such as parsing the response of the LLM for return values (see below). It returns a `Response` object that contains the prompt outputs as member variables. This approach makes it simple to extract and use them.
 
-### Automatic Query Recovery
+### Query Error Recovery
 
-`prympt` includes an automatic retry mechanism for queries. You can specify the number of retries if the LLM response does not match the expected output structure:
+`prympt` provides an automatic query retry mechanism. In method `Prompt.query` you can specify the number of retries if the LLM response does respond with a valid output structure:
 
     prompt = Prompt("Generate Python function that prints weekday, from any given date").output("python", "python code goes here")
     response = prompt.query(retries=5, **model_params)  # Default number of retries is 3
     print(response)
 
+This will trigger for example if the outputs 
+
 When the `retries` parameter of the `query` method is set to >= 1, the call to `query` will automatically retry the call to the LLM if the LLM's does not reply with the correct outputs (e.g. the LLM provided outputs that cannot be parsed, or do not match the prompt's outputs).
 
 When the `query` method runs out of retries, it will raise an **ResponseError** exception, indicating the last error found in the LLM's response (see below).
+
+Alternatively to using `query`, you can implement a retry loop that parses the LLM response using a `Response` object, and retries automatically:
+
+    from Prympt import PrymptError
+    
+    num_retries, error = 5, None
+
+    for i in range(num_retries):
+
+        try:
+            # Get LLM's response to prompt
+            text_response = litellm_completion(prompt.to_string())
+
+            # Create and use Response object from the LLM's response
+            response = Response(text_response, prompt)
+            
+            # Finish retry loop
+            break
+
+        except PrymptError as e:
+            # Add error message to prompt. This primes the LLM to avoid error in next retry
+            prompt = prompt.error(e)
+            error = e
+   
+    if error:
+        raise(error)
+
 
 ### Custom LLM Interfacing
 

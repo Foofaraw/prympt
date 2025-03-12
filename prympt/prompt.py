@@ -8,18 +8,18 @@ from __future__ import (  # Required for forward references in older Python vers
 import copy
 import inspect
 import warnings
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Callable, Tuple
+from dataclasses import dataclass, field
 
 from jinja2 import Environment, StrictUndefined, TemplateSyntaxError, nodes
 from jinja2.visitor import NodeVisitor
 from litellm import completion
 
-from .exceptions import ConcatenationError, PromptError, ReplacementError, ResponseError
+from .exceptions import PrymptError, ConcatenationError, PromptError, ReplacementError, ResponseError
 from .output import Output, outputs_to_xml
-from .response import Response
+from .tool_call import any_to_prympt_tool, Tool
 
 _jinja_env = Environment(undefined=StrictUndefined)
-
 
 def _extract_jinja_variables(template_source: str) -> List[str]:
     class OrderedVariableCollector(NodeVisitor):
@@ -69,7 +69,7 @@ class Prompt:
         outputs (List[Output]): List of outputs.
     """
 
-    def __init__(self, template: str, outputs: List[Output] = []):
+    def __init__(self, template: str = "", outputs: List[Output] = [], tools: List[Tool] = []):
         """Initialize a Prompt instance.
 
         Args:
@@ -78,6 +78,7 @@ class Prompt:
         """
         self.template: str = template
         self.outputs: List[Output] = outputs
+        self.tools: Dict[str, Tool] = { tool.name: tool for tool in tools }
 
         # Make sure there are no outputs with duplicate names
         errors = []
@@ -92,6 +93,9 @@ class Prompt:
                 ]
         if errors:
             raise PromptError("\n".join(errors))
+        
+    def tool_schemas(self) -> List[Dict[str,Any]]:
+        return [ tool.schema for __, tool in self.tools.values() ]
 
     def __call__(self, *args: Any, **kwargs: Any) -> "Prompt":
         """Render the prompt with the given keyword arguments.
@@ -119,7 +123,9 @@ class Prompt:
             kwargs[k] = v
 
         return Prompt(
-            _jinja_substitution(self.template, **kwargs), outputs=self.outputs
+            _jinja_substitution(self.template, **kwargs),
+            outputs=self.outputs,
+            tools = self.tools.items(),
         )
 
     def __add__(self, other: Any) -> "Prompt":
@@ -143,9 +149,16 @@ class Prompt:
                 "Prompt error: trying to add Prompt to object other than str|Prompt for __add__"
             )
 
+        overlapping_tools = sorted(self.tools.keys() & other_prompt.tools.keys())
+        if overlapping_tools:
+            raise ConcatenationError(
+                f"Trying to concatenate two prompts with overlapping tools: {', '.join(overlapping_tools)}"
+            )
+            
         return Prompt(
             self.template + "\n" + other_prompt.template,
-            outputs=self.outputs + other_prompt.outputs,
+            outputs = self.outputs + other_prompt.outputs,
+            tools = (self.tools | other_prompt.tools).values(),
         )
 
     def __str__(self) -> str:
@@ -178,6 +191,9 @@ class Prompt:
 
         return string
 
+    def to_string(self):
+        return self.__str__()
+       
     @classmethod
     def load(cls, template_file: str) -> "Prompt":
         """Load a prompt template from a file.
@@ -223,8 +239,27 @@ class Prompt:
         Returns:
             Prompt: A new Prompt instance with the added output.
         """
+        return Prompt(
+            self.template,
+            self.outputs + [Output(*args, **kwargs)],
+            self.tools.items(),
+            )
 
-        return Prompt(self.template, self.outputs + [Output(*args, **kwargs)])
+    def tool(self, callable) -> "Prompt":
+
+        tool = Tool(callable)
+        
+        if tool.name in self.tools:
+            raise PromptError(f"Tool '{tool.name}' already exists in prompt")
+        
+        return Prompt(
+            self.template,
+            self.outputs,
+            list(self.tools.items()) + [tool],
+            )
+
+    def error(self, error: PrymptError) -> Prompt:
+        return self + f"\n\nMake sure to avoid the following error in your response: {error.message}\n"
 
     def query(
         self,
@@ -232,88 +267,38 @@ class Prompt:
         retries: int = 4,
         *args: Any,
         **kwargs: Any,
-    ) -> Response:
+    ) -> Any:
         """Query an LLM with the prompt and handle retries.
 
         Args:
             llm_completion (Callable): The LLM completion function.
             retries (int): Number of retry attempts.
-            *args: Additional positional arguments for the LLM function.
-            **kwargs: Additional keyword arguments for the LLM function.
+            *args: Additional positional arguments for llm_completion.
+            **kwargs: Additional keyword arguments for llm_completion.
 
         Returns:
             Response: The response from the LLM.
 
         Raises:
-            ResponseError: raised when LLM response and Prompt contain incompatible outputs (different number, name or type).
+            PrymptError: raised when response to LLM call does not conform prompt requirements (e.g. incompatible outputs) for `retries` number of times.
         """
 
-        response_params = inspect.signature(Response.__init__).parameters
-
-        response_kwargs = {k: v for k, v in kwargs.items() if k in response_params}
-        llm_completion_kwargs = {
-            k: v for k, v in kwargs.items() if k not in response_params
-        }
-
-        errors: List[str] = []
-
+        from .response import Response
+        
+        prompt, last_error = self, None
+        
         for retry_time in range(retries):
 
             try:
+                return Response(llm_completion(prompt.to_string(), *args, **kwargs), prompt)
 
-                if retry_time > 0:
-                    pass
-                    # warnings.warn("Setting temperature to 1!", RuntimeWarning)
-                    # llm_completion_kwargs["temperature"] = 1.0
+            except PrymptError as e:
+                   
+                warn_message = f"WARNING: failed LLM query (try {retry_time} out of {retries}), reason: {e.message} ({e.message})" 
+                warnings.warn(warn_message, RuntimeWarning)
+                
+                prompt = prompt.error(e)
+                last_error = e
 
-                prompt_text = self.__str__()
-
-                if errors:
-                    prompt_text += (
-                        "\n\nMake sure to avoid the following errors in the XML:\n"
-                    )
-                    prompt_text += "\n- ".join(errors)
-
-                raw_response_text = llm_completion(
-                    prompt_text, *args, **llm_completion_kwargs
-                )
-                response = Response(raw_response_text, **response_kwargs)
-
-                new_errors = []
-
-                # Check that expected and responded outputs are compatible
-                if len(self.outputs) != len(response):
-                    new_errors += [
-                        f"Expected {len(self.outputs)} outputs in LLM response, but got {len(response)}"
-                    ]
-                    errors += new_errors
-                    raise ResponseError("\n".join(new_errors))
-
-                new_errors = []
-                for index, (defined, responded) in enumerate(
-                    zip(self.outputs, response)
-                ):
-                    if defined.name != responded.name:
-                        new_errors += [
-                            f"Name for output at position {index} ('{defined.name}') differs from the one provided by LLM ('{responded.name}')\n"
-                        ]
-                    if defined.type != responded.type:
-                        new_errors += [
-                            f"Type for output at position {index} ('{defined.type}') differs from the one provided by LLM ('{responded.type}')\n"
-                        ]
-
-                if new_errors:
-                    errors += new_errors
-                    raise ResponseError("\n".join(new_errors))
-
-                break
-
-            except Exception as e:
-                warnings.warn(
-                    f"WARNING: failed LLM query (try {retry_time} out of {retries}), reason: {str(e)} ({type(e)})",
-                    RuntimeWarning,
-                )
-                if retry_time + 1 == retries:
-                    raise e
-
-        return response
+        raise last_error
+    

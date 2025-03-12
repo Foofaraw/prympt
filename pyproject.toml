@@ -19,7 +19,8 @@ requires-python = ">=3.9"
 dependencies = [
     "litellm>=0.3.0",
     "jinja2>=3.1.2",
-    "lxml>=5.3.1"
+    "lxml>=5.3.1",
+    "docstring_parser>=0.16",
 ]
 
 [project.optional-dependencies]

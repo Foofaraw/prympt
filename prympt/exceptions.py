@@ -1,8 +1,15 @@
 # Copyright (c) 2025 foofaraw (GitHub: foofaraw)
 # Licensed under the MIT License (see LICENSE file for details).
 
+class PrymptError(Exception):
+    """Base exception class for Prympt errors."""
 
-class PromptError(Exception):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+class PromptError(PrymptError):
     """Base exception class for prompt-related errors."""
 
     def __init__(self, message: str) -> None:
@@ -25,7 +32,7 @@ class ReplacementError(PromptError):
         self.message = message
 
 
-class ResponseError(PromptError):
+class ResponseError(PrymptError):
     """Base exception class for response-related errors."""
 
     def __init__(self, message: str) -> None:

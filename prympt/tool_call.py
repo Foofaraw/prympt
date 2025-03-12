@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass, field
 from typing import (
     Any,
+    Tuple,
     Callable,
     Dict,
     List,
@@ -15,8 +16,9 @@ from typing import (
     get_origin,
     get_type_hints,
 )
+import docstring_parser
 
-
+'''
 @dataclass
 class Parameter:
     name: str
@@ -26,11 +28,23 @@ class Parameter:
 
 
 @dataclass
-class ToolCalling:
+class Tool:
     name: str
     parameters: List[Parameter] = field(default_factory=list)
+'''
 
+@dataclass
+class Tool:
+    callable: Callable
+    schema: Dict[str, Any]
 
+    def __init__(self, callable:Any) -> None:
+        self.callable, self.schema = any_to_prympt_tool(callable)
+    
+    @property
+    def name(self) -> str:
+        return self.schema['function']['name']
+    
 def python_type_to_json_schema(py_type: Any) -> Dict[str, Any]:
     """
     Maps a Python type to a JSON schema fragment.
@@ -98,10 +112,11 @@ def json_schema_to_python_type(schema: Dict[str, Any]) -> Any:
         return Union[types]
     return str
 
-
 def function_to_json_schema(func: Callable[..., Any]) -> Dict[str, Any]:
     """
     Converts a Python function to a JSON schema for LLM function calling.
+    Separates the function description from the parameter descriptions by
+    parsing the function's docstring using the docstring_parser library.
 
     Args:
         func: The Python function to convert.
@@ -109,8 +124,17 @@ def function_to_json_schema(func: Callable[..., Any]) -> Dict[str, Any]:
     Returns:
         A dictionary representing the JSON schema.
     """
+    # Parse the docstring using docstring_parser.
+    doc = docstring_parser.parse(inspect.getdoc(func) or "")
+    # Combine the short and long descriptions for the overall function description.
+    doc_description = doc.short_description or ""
+    if doc.long_description:
+        doc_description += " " + doc.long_description
+
+    # Build a dictionary mapping parameter names to their descriptions.
+    param_descriptions = {param.arg_name: param.description for param in doc.params if param.arg_name}
+
     name = func.__name__
-    description = func.__doc__ or ""
     sig = inspect.signature(func)
     type_hints = get_type_hints(func)
 
@@ -122,13 +146,16 @@ def function_to_json_schema(func: Callable[..., Any]) -> Dict[str, Any]:
             continue
         annotation = type_hints.get(param_name, str)
         param_schema = python_type_to_json_schema(annotation)
+        # Add the parameter description if available.
+        if param_name in param_descriptions and param_descriptions[param_name]:
+            param_schema["description"] = param_descriptions[param_name]
         if param.default is inspect.Parameter.empty:
             required.append(param_name)
         properties[param_name] = param_schema
 
     schema: Dict[str, Any] = {
         "name": name,
-        "description": description,
+        "description": doc_description.strip(),
         "parameters": {
             "type": "object",
             "properties": properties,
@@ -137,10 +164,13 @@ def function_to_json_schema(func: Callable[..., Any]) -> Dict[str, Any]:
     if required:
         schema["parameters"]["required"] = required
 
-    return schema
+    return { "type": "function", "function": schema}
 
-
-def tool_calling_to_json_schema(tool: ToolCalling) -> Dict[str, Any]:
+def any_to_prympt_tool(tool: Any) -> Tuple[Callable, Dict[str, Any]]:
+    # 'tool' is a Python function.
+    return tool, function_to_json_schema(tool)
+'''
+def tool_call_to_json_schema(tool: Tool) -> Dict[str, Any]:
     """
     Converts a ToolCalling instance into a JSON schema.
     """
@@ -163,7 +193,7 @@ def tool_calling_to_json_schema(tool: ToolCalling) -> Dict[str, Any]:
     return schema
 
 
-def json_schema_to_tool_calling(schema: Dict[str, Any]) -> ToolCalling:
+def json_schema_to_tool_call(schema: Dict[str, Any]) -> Tool:
     """
     Converts a JSON schema into a ToolCalling instance.
     """
@@ -180,4 +210,5 @@ def json_schema_to_tool_calling(schema: Dict[str, Any]) -> ToolCalling:
             Parameter(name=param_name, required=is_required, type=py_type)
         )
 
-    return ToolCalling(name=name, parameters=parameters)
+    return Tool(name=name, parameters=parameters)
+'''
