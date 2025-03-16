@@ -257,9 +257,9 @@ class Prompt:
             self.outputs,
             list(self.tools.items()) + [tool],
             )
-
+    
     def error(self, error: PrymptError) -> Prompt:
-        return self + f"\n\nMake sure to avoid the following error in your response: {error.message}\n"
+        return self + f"\n\nMake sure to avoid the following error in your response: {str(error)}\n"
 
     def query(
         self,
@@ -294,7 +294,7 @@ class Prompt:
 
             except PrymptError as e:
                    
-                warn_message = f"WARNING: failed LLM query (try {retry_time} out of {retries}), reason: {e.message} ({e.message})" 
+                warn_message = f"WARNING: failed LLM query (try {retry_time} out of {retries}), reason: {str(e)}" 
                 warnings.warn(warn_message, RuntimeWarning)
                 
                 prompt = prompt.error(e)

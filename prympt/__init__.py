@@ -8,6 +8,7 @@ from .exceptions import (
     PromptError,
     ReplacementError,
     ResponseError,
+    ToolCallError,
 )
 from .output import Output
 from .prompt import Prompt, litellm_completion
@@ -20,6 +21,7 @@ __all__ = [
     "MalformedOutput",
     "PromptError",
     "ResponseError",
+    "ToolCallError",
     "Output",
     "Prompt",
     "Response",

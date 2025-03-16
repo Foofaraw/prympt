@@ -3,6 +3,7 @@
 
 import inspect
 import json
+import re
 from dataclasses import dataclass, field
 from typing import (
     Any,
@@ -17,21 +18,11 @@ from typing import (
     get_type_hints,
 )
 import docstring_parser
-
-'''
-@dataclass
-class Parameter:
-    name: str
-    required: bool
-    type: Any
-    value: Optional[Any] = None
-
-
-@dataclass
-class Tool:
-    name: str
-    parameters: List[Parameter] = field(default_factory=list)
-'''
+import xml.etree.ElementTree as ET
+from dataclasses import dataclass
+from typing import Callable, Dict, Any
+from lxml import etree
+from xml.dom import minidom
 
 @dataclass
 class Tool:
@@ -43,8 +34,22 @@ class Tool:
     
     @property
     def name(self) -> str:
-        return self.schema['function']['name']
+        return self.schema['name']
     
+    @property
+    def signature(self) -> str:
+        '''
+        Given the tool schema, returns the function signature as a string.
+        '''
+        return get_function_signature_from_schema(self.schema)
+
+    @property
+    def to_xml(self) -> str:
+        return tools_to_xml([self])
+
+    def __call__(self,  **kwargs):
+        return callable(**kwargs)
+
 def python_type_to_json_schema(py_type: Any) -> Dict[str, Any]:
     """
     Maps a Python type to a JSON schema fragment.
@@ -112,6 +117,7 @@ def json_schema_to_python_type(schema: Dict[str, Any]) -> Any:
         return Union[types]
     return str
 
+
 def function_to_json_schema(func: Callable[..., Any]) -> Dict[str, Any]:
     """
     Converts a Python function to a JSON schema for LLM function calling.
@@ -164,51 +170,139 @@ def function_to_json_schema(func: Callable[..., Any]) -> Dict[str, Any]:
     if required:
         schema["parameters"]["required"] = required
 
-    return { "type": "function", "function": schema}
+    return schema
 
 def any_to_prympt_tool(tool: Any) -> Tuple[Callable, Dict[str, Any]]:
     # 'tool' is a Python function.
     return tool, function_to_json_schema(tool)
-'''
-def tool_call_to_json_schema(tool: Tool) -> Dict[str, Any]:
-    """
-    Converts a ToolCalling instance into a JSON schema.
-    """
-    properties = {}
-    required = []
 
-    for param in tool.parameters:
-        param_schema = python_type_to_json_schema(param.type)
-        properties[param.name] = param_schema
-        if param.required:
-            required.append(param.name)
 
-    schema = {
-        "name": tool.name,
-        "description": "",  # No description in ToolCalling; could be extended if needed.
-        "parameters": {"type": "object", "properties": properties},
+def tools_to_xml(tools: List[Tool]) -> str:
+    """
+    Converts a list of Tool objects into an XML string.
+    The parameters for each tool are extracted from the tool's schema.
+    Each parameter includes a 'required' field indicating whether it is required.
+
+    Args:
+        tools: A list of Tool objects.
+
+    Returns:
+        A string representing the XML structure with no indentation.
+    """
+    # Create the root element
+    tool_calls = etree.Element('tool_calls')
+
+    # Iterate over the list of tools
+    for tool in tools:
+        # Create the tool_call element
+        tool_call = etree.SubElement(tool_calls, 'tool_call', name=tool.name)
+
+        # Extract parameters and required fields from the tool's schema
+        parameters = tool.schema['parameters']['properties']
+        required_params = tool.schema['parameters'].get('required', [])
+
+        # Add parameters to the tool_call element
+        for param_name, param_schema in parameters.items():
+            param_type = param_schema.get('type', 'str')  # Default to 'str' if type is not specified
+            # Check if the parameter is required
+            is_required = param_name in required_params
+            # Create the param element with the 'required' attribute
+            param_element = etree.SubElement(
+                tool_call,
+                'param',
+                name=param_name,
+                type=param_type,
+                required=str(is_required).lower()  # Convert boolean to 'true' or 'false'
+            )
+            # Add a CDATA section for the parameter value
+            param_element.text = etree.CDATA(f"... value for param '{param_name}' goes here ...")
+
+    # Convert the ElementTree to a string with no indentation
+    xml_str = etree.tostring(tool_calls, encoding='unicode', pretty_print=True)
+
+    return xml_str
+
+def parse_tool_calls(text: str) -> list:
+    """
+    Parses a string containing a <tool_calls> block and extracts the function names and parameters.
+
+    Args:
+        xml_string: A string containing the <tool_calls> XML block.
+
+    Returns:
+        A list of lists, where each inner list contains:
+        - The tool name (str).
+        - A list of parameter details, where each parameter is represented as:
+          [param_name (str), param_type (str), param_value (str)].
+    """
+    
+    matches = list(re.finditer(r"<tool_calls>.*?</tool_calls>", text, re.DOTALL))
+    if not matches:
+        return []
+    xml_string = matches[-1].group(0)
+    
+    # Parse the XML string
+    root = etree.fromstring(xml_string)
+
+    # Initialize the result list
+    result = []
+
+    # Iterate over each <tool_call> element
+    for tool_call in root.findall('tool_call'):
+        # Extract the tool name
+        tool_name = tool_call.get('name')
+
+        # Initialize the parameters list
+        params = []
+
+        # Iterate over each <param> element
+        for param in tool_call.findall('param'):
+            param_name = param.get('name')
+            param_type = param.get('type')
+            param_value = param.text.strip() if param.text else None
+
+            # Add the parameter details to the parameters list
+            if param_value:
+                params.append([param_name, param_type, param_value])
+
+        # Append the tool name and parameters to the result list
+        result.append([tool_name, params])
+
+    return result
+
+def get_function_signature_from_schema(schema):
+    """
+    Given a tool schema dictionary following OpenAI's API format,
+    returns the function signature as a string.
+    
+    Expected schema structure:
+    
+    {
+        "name": "function_name",
+        "description": "Description of the function",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "param1": {"type": "int", "description": "desc for param1"},
+                "param2": {"type": "str", "description": "desc for param2"},
+                ...
+            },
+            "required": ["param1", ...]
+        }
     }
-    if required:
-        schema["parameters"]["required"] = required # type: ignore
-    return schema
-
-
-def json_schema_to_tool_call(schema: Dict[str, Any]) -> Tool:
     """
-    Converts a JSON schema into a ToolCalling instance.
-    """
-    name = schema.get("name", "unknown_tool")
-    params_schema = schema.get("parameters", {})
-    properties = params_schema.get("properties", {})
-    required_list = params_schema.get("required", [])
-
-    parameters: List[Parameter] = []
-    for param_name, prop_schema in properties.items():
-        py_type = json_schema_to_python_type(prop_schema)
-        is_required = param_name in required_list
-        parameters.append(
-            Parameter(name=param_name, required=is_required, type=py_type)
-        )
-
-    return Tool(name=name, parameters=parameters)
-'''
+    params = []
+    parameters = schema.get("parameters", {})
+    properties = parameters.get("properties", {})
+    required = parameters.get("required", [])
+    
+    for param_name, param_info in properties.items():
+        param_type = param_info.get("type", "Any")
+        # Build the parameter string with type annotation.
+        param_str = f"{param_name}: {param_type}"
+        # If the parameter is not required, we add a default value of None.
+        if param_name not in required:
+            param_str += " = None"
+        params.append(param_str)
+    
+    return f"{schema['name']}({', '.join(params)}): {schema.get('description')}"

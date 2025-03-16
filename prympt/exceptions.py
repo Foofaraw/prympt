@@ -3,45 +3,28 @@
 
 class PrymptError(Exception):
     """Base exception class for Prympt errors."""
+    pass
 
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-        self.message = message
-
+class ToolCallError(Exception):
+    """Base exception class for Prympt errors."""
+    pass
 
 class PromptError(PrymptError):
     """Base exception class for prompt-related errors."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-        self.message = message
-
+    pass
 
 class ConcatenationError(PromptError):
     """Exception raised for errors in the input prompt."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-
+    pass
 
 class ReplacementError(PromptError):
     """Exception class for replacement-related errors."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-        self.message = message
-
+    pass
 
 class ResponseError(PrymptError):
     """Base exception class for response-related errors."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-        self.message = message
-
+    pass
 
 class MalformedOutput(ResponseError):
     """Exception raised for malformed outputs in responses."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
+    pass
