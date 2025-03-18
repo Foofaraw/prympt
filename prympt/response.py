@@ -38,12 +38,13 @@ def _parse_llm_response(llm_response:Any) -> Tuple[str, Any]:
     if message:
         # Get tool calls from message
         tool_calls = []
-        for tool_call in llm_response['tool_calls']:
-            id = tool_call['id']
-            name = tool_call['function']['name']
-            arguments = json.loads(tool_call['function']['arguments'])
-            tool_calls.append([id, name, arguments])
-        return llm_response['content'], tool_calls
+        if message['tool_calls']:
+            for tool_call in message['tool_calls']:
+                id = tool_call['id']
+                name = tool_call['function']['name']
+                arguments = json.loads(tool_call['function']['arguments'])
+                tool_calls.append([id, name, arguments])
+        return message['content'], tool_calls
 
     '''
     # Assume llm_response is a litellm Message
@@ -72,8 +73,7 @@ class Response:
 
     def __init__(
         self, llm_response: Any,
-        prompt: Prompt = Prompt(),
-        tool_calls: List[Tuple[str, Any]] = None,        
+        prompt: Prompt = Prompt()
         ):
         """
         Initializes a Response object. Parses the response text, according to the prompt content.
@@ -81,11 +81,14 @@ class Response:
         
         response_text, tool_calls = _parse_llm_response(llm_response)
         
+        if not tool_calls:
+            # Try to parse tool calls from the 'response_text'
+            pass
+        
         self.__raw_response_text: str = response_text if response_text else ""
 
         self.__outputs: List[Output] = xml_to_outputs(self.__raw_response_text)
-        self.__tool_calls:List[Tuple[str, Any]] = tool_calls
-        
+
         # Add output contents as member variables in response object
         for output in self.__outputs:
             if output.name and not hasattr(self, output.name):
@@ -114,9 +117,9 @@ class Response:
             if new_errors:
                 raise ResponseError("\n".join(new_errors))
 
-        if self.__tool_calls:
+        if tool_calls:
             
-            self.tool_calls = []
+            self.__tool_calls = []
             # Appending output of function call
             for id, name, arguments in self.__tool_calls:
                 
@@ -130,7 +133,7 @@ class Response:
                 
                 tool_call_message = tool_call_to_message(id, name, tool_call_result)
                 
-                self.tool_calls.append(tool_call_message)
+                self.__tool_calls.append(tool_call_message)
                 
     def __str__(self) -> str:
         """Returns the raw response text."""
