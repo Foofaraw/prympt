@@ -94,9 +94,6 @@ class Prompt:
         if errors:
             raise PromptError("\n".join(errors))
         
-    def tool_schemas(self) -> List[Dict[str,Any]]:
-        return [ tool.schema for __, tool in self.tools.values() ]
-
     def __call__(self, *args: Any, **kwargs: Any) -> "Prompt":
         """Render the prompt with the given keyword arguments.
 
@@ -191,9 +188,6 @@ class Prompt:
 
         return string
 
-    def to_string(self):
-        return self.__str__()
-       
     @classmethod
     def load(cls, template_file: str) -> "Prompt":
         """Load a prompt template from a file.
@@ -260,6 +254,41 @@ class Prompt:
     
     def error(self, error: PrymptError) -> Prompt:
         return self + f"\n\nMake sure to avoid the following error in your response: {str(error)}\n"
+
+    def to_string(self):
+        return self.__str__()
+       
+    def to_message(self, tools = False):
+        
+        if tools and self.tools:
+
+            # Compose string for signatures
+            signatures = []
+            for tool in self.tools.values():
+                signatures += [ tool.signature ]
+
+            signatures = "  - " + "\n  - ".join(signatures)
+
+            # Compose string for sample tool call
+            def tool_name(param1_name: str, param2_name: int, param3_name: int):
+                """Sample tool"""
+                pass
+            sample_tool_xml = Tool(tool_name).to_xml
+
+            # Combine into tools template
+            tools_template = (
+                "\n\nThis is a list of the tools available:\n" +
+                signatures +
+                "\n\nProvide all your tool cals inside a single XML following this format:\n\n" +
+                sample_tool_xml
+            )
+        else:
+            tools_template = ""
+
+        return {"role": "user", "content": self.__str__() + tools_template }
+
+    def tool_schemas(self) -> List[Dict[str,Any]]:
+        return [ { "type": "function", "function": tool.schema } for tool in self.tools.values() ]
 
     def query(
         self,

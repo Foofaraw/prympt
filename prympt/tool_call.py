@@ -211,8 +211,8 @@ def tools_to_xml(tools: List[Tool]) -> str:
                 tool_call,
                 'param',
                 name=param_name,
-                type=param_type,
-                required=str(is_required).lower()  # Convert boolean to 'true' or 'false'
+                #type=param_type,
+                #required=str(is_required).lower()  # Convert boolean to 'true' or 'false',
             )
             # Add a CDATA section for the parameter value
             param_element.text = etree.CDATA(f"... value for param '{param_name}' goes here ...")

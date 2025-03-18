@@ -21,9 +21,31 @@ def tool_call_to_message(id, name, result):
     
 def _parse_llm_response(llm_response:Any) -> Tuple[str, Any]:
     
+    # Check if the response is empty
     if not llm_response:
         return "", []
-    
+
+    # Check if the response is a message
+    try:
+        message = llm_response.to_dict()
+    except AttributeError:
+        try:
+            assert isinstance(llm_response, dict)
+            message = llm_response
+        except Exception:
+            message = None    
+
+    if message:
+        # Get tool calls from message
+        tool_calls = []
+        for tool_call in llm_response['tool_calls']:
+            id = tool_call['id']
+            name = tool_call['function']['name']
+            arguments = json.loads(tool_call['function']['arguments'])
+            tool_calls.append([id, name, arguments])
+        return llm_response['content'], tool_calls
+
+    '''
     # Assume llm_response is a litellm Message
     try:
         # Get tool calls from message
@@ -34,10 +56,10 @@ def _parse_llm_response(llm_response:Any) -> Tuple[str, Any]:
             arguments = json.loads(tool_call.function.arguments)
             tool_calls.append([id, name, arguments])
         return llm_response.content, tool_calls
-    
     except Exception as e:
         pass
-
+    '''
+    
     # llm_response must be a string
     assert isinstance(llm_response, str), f"Error, llm_response is of type {type(llm_response)}"
     return llm_response, []
