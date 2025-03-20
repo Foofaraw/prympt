@@ -9,16 +9,27 @@ from typing import Iterator, List, Tuple, Any
 import json
 from .prompt import Prompt
 from .output import Output, xml_to_outputs
+from .tool_call import xml_to_tool_calls
 from .exceptions import ResponseError, ToolCallError
 
-def tool_call_to_message(id, name, result):
-    return {
-        "role": "tool",
-        "tool_call_id": id,
-        "name": name,
-        "content": result,
-    }
-    
+'''
+def tool_call_to_message(id, name, arguments, result):
+    return dict(
+        id = id,
+        name = name,
+        arguments = arguments,
+        result = result,
+    )
+
+def tool_call_to_OpenAI_message(id, name, arguments, result):
+    return dict(
+        role = "tool",
+        tool_call_id = id,
+        name = name,
+        content = result,
+    )
+'''
+
 def _parse_llm_response(llm_response:Any) -> Tuple[str, Any]:
     
     # Check if the response is empty
@@ -44,22 +55,11 @@ def _parse_llm_response(llm_response:Any) -> Tuple[str, Any]:
                 name = tool_call['function']['name']
                 arguments = json.loads(tool_call['function']['arguments'])
                 tool_calls.append([id, name, arguments])
+        else:
+            # Try to get tool calls from the message content
+            tool_calls = xml_to_tool_calls(message['content'])
+            
         return message['content'], tool_calls
-
-    '''
-    # Assume llm_response is a litellm Message
-    try:
-        # Get tool calls from message
-        tool_calls = []
-        for tool_call in llm_response.tool_calls:
-            id = tool_call.id
-            name = tool_call.function.name
-            arguments = json.loads(tool_call.function.arguments)
-            tool_calls.append([id, name, arguments])
-        return llm_response.content, tool_calls
-    except Exception as e:
-        pass
-    '''
     
     # llm_response must be a string
     assert isinstance(llm_response, str), f"Error, llm_response is of type {type(llm_response)}"
@@ -71,6 +71,11 @@ class Response:
     A class representing a response containing code blocks.
     """
 
+    def set_attribute(self, name:str, content:Any):
+        if hasattr(self, name):
+            raise ResponseError(f"Tried to add two outputs with name {name}")
+        setattr(self, name, content)
+        
     def __init__(
         self, llm_response: Any,
         prompt: Prompt = Prompt()
@@ -80,19 +85,15 @@ class Response:
         """
         
         response_text, tool_calls = _parse_llm_response(llm_response)
-        
-        if not tool_calls:
-            # Try to parse tool calls from the 'response_text'
-            pass
-        
+                
         self.__raw_response_text: str = response_text if response_text else ""
 
         self.__outputs: List[Output] = xml_to_outputs(self.__raw_response_text)
 
         # Add output contents as member variables in response object
         for output in self.__outputs:
-            if output.name and not hasattr(self, output.name):
-                setattr(self, output.name, output.content)
+            if output.name:
+                self.set_attribute(output.name, output.content)
 
         # Check return types with prompt outputs
         if prompt.outputs:
@@ -120,21 +121,29 @@ class Response:
         if tool_calls:
             
             self.__tool_calls = []
+            
             # Appending output of function call
-            for id, name, arguments in self.__tool_calls:
+            for id, name, arguments in tool_calls:
                 
                 if name not in prompt.tools:
-                    raise ResponseError(f"Unknown tool with name '{name}'")                
+                    raise ResponseError(f"Tried to use unknown tool with name '{name}'")                
                 
                 try:
-                    tool_call_result = prompt.tools[name].callable(**arguments)
+
+                    tool_call_message = dict(
+                        id = id,
+                        name = name,
+                        arguments = arguments,
+                        result = prompt.tools[name].callable(**arguments)
+                    )
+
+                    self.__tool_calls.append(tool_call_message)
+
                 except Exception as e:
-                    raise ToolCallError(e.message)
-                
-                tool_call_message = tool_call_to_message(id, name, tool_call_result)
-                
-                self.__tool_calls.append(tool_call_message)
-                
+                    raise ToolCallError(f"Using tool '{name}': {str(e)}")
+                                          
+            self.set_attribute('tool_calls', self.__tool_calls)
+
     def __str__(self) -> str:
         """Returns the raw response text."""
         return self.__raw_response_text

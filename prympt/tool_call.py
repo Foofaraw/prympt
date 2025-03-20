@@ -24,6 +24,9 @@ from typing import Callable, Dict, Any
 from lxml import etree
 from xml.dom import minidom
 
+from .output import find_last_xml_block
+
+
 @dataclass
 class Tool:
     callable: Callable
@@ -222,7 +225,7 @@ def tools_to_xml(tools: List[Tool]) -> str:
 
     return xml_str
 
-def parse_tool_calls(text: str) -> list:
+def xml_to_tool_calls(text: str) -> list:
     """
     Parses a string containing a <tool_calls> block and extracts the function names and parameters.
 
@@ -234,13 +237,13 @@ def parse_tool_calls(text: str) -> list:
         - The tool name (str).
         - A list of parameter details, where each parameter is represented as:
           [param_name (str), param_type (str), param_value (str)].
-    """
+    """    
     
-    matches = list(re.finditer(r"<tool_calls>.*?</tool_calls>", text, re.DOTALL))
-    if not matches:
+    xml_string = find_last_xml_block(text, 'tool_calls')
+    
+    if not xml_string:
         return []
-    xml_string = matches[-1].group(0)
-    
+        
     # Parse the XML string
     root = etree.fromstring(xml_string)
 
@@ -258,15 +261,14 @@ def parse_tool_calls(text: str) -> list:
         # Iterate over each <param> element
         for param in tool_call.findall('param'):
             param_name = param.get('name')
-            param_type = param.get('type')
             param_value = param.text.strip() if param.text else None
 
             # Add the parameter details to the parameters list
             if param_value:
-                params.append([param_name, param_type, param_value])
+                params.append([param_name, param_value])
 
         # Append the tool name and parameters to the result list
-        result.append([tool_name, params])
+        result.append([None, tool_name, dict(params)])
 
     return result
 

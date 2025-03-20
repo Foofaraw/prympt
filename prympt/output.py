@@ -94,6 +94,15 @@ def outputs_to_xml(outputs: List[Output]) -> str:
 
     return pretty_xml_str
 
+def find_last_xml_block(text: str, block_name:str) -> list:
+   
+    pattern = f"<{block_name}>(?:(?!<{block_name}>).)*?</{block_name}>"
+    matches = list(re.finditer(pattern, text, re.DOTALL))    
+    if not matches:
+        return []
+    xml_string = matches[-1].group(0)
+    
+    return xml_string
 
 def xml_to_outputs(text: str) -> List[Output]:
     """
@@ -106,10 +115,13 @@ def xml_to_outputs(text: str) -> List[Output]:
     # Assumes the XML is enclosed in <Outputs>...</Outputs> tags.
     # Use a regular expression to find the XML portion
 
-    matches = list(re.finditer(r"<outputs>.*?</outputs>", text, re.DOTALL))
-    if not matches:
+    xml_string = find_last_xml_block(text, 'outputs')
+    
+    if not xml_string:
         return []
-    xml_string = matches[-1].group(0)
+    
+    #matches = list(re.finditer(r"<outputs>.*?</outputs>", text, re.DOTALL))
+    #xml_string = matches[-1].group(0)
 
     root = ET.fromstring(xml_string)
     output_list = []
