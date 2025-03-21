@@ -26,7 +26,7 @@ def math_function(
     c: List[float] = [1.0],
     d: Dict[str, int] = {"x": 1},
 ):
-    return a + sum(c) + d.get('y', 0)
+    return a + len(b) + sum(c) + d.get('y', 0)
 
 def test_validate_and_cast_correct() -> None:
     
@@ -35,14 +35,14 @@ def test_validate_and_cast_correct() -> None:
     
     # Correct call with all parameters.
     assert validated_params == dict(a=1, b='hello', c=[2.0, 3.5], d={'y': 2})
-    assert math_function(**validated_params) == 8.5
+    assert math_function(**validated_params) == 13.5
     
 def test_validate_and_cast_correct_missing_optional() -> None:    
     # Correct call with missing optional parameter 'd'.
     params = dict(a="1", b="hello", c="[2.0, 3.5]")
     validated_params = validate_and_cast(math_function, params)
     assert validated_params == dict(a=1, b='hello', c=[2.0, 3.5], d={'x':1})
-    assert math_function(**validated_params) == 6.5
+    assert math_function(**validated_params) == 11.5
 
 def test_validate_and_cast_incorrect_missing_required() -> None:    
     # Incorrect call with missing required parameter 'a'.
