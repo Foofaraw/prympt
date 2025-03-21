@@ -17,7 +17,7 @@ from litellm import completion
 
 from .exceptions import PrymptError, ConcatenationError, PromptError, ReplacementError, ResponseError
 from .output import Output, outputs_to_xml
-from .tool_call import any_to_prympt_tool, Tool
+from .tool import Tool
 
 _jinja_env = Environment(undefined=StrictUndefined)
 

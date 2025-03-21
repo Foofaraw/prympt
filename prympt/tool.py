@@ -2,6 +2,9 @@
 # Licensed under the MIT License (see LICENSE file for details).
 
 import inspect
+import ast
+from typing import get_type_hints
+from pydantic import create_model, ValidationError
 import json
 import re
 from dataclasses import dataclass, field
@@ -24,34 +27,40 @@ from typing import Callable, Dict, Any
 from lxml import etree
 from xml.dom import minidom
 
+from .exceptions import ToolCallError
 from .output import find_last_xml_block
-
 
 @dataclass
 class Tool:
-    callable: Callable
+    name: str
+    func: Callable
     schema: Dict[str, Any]
-
-    def __init__(self, callable:Any) -> None:
-        self.callable, self.schema = any_to_prympt_tool(callable)
+    signature: str
     
-    @property
-    def name(self) -> str:
-        return self.schema['name']
+    def __init__(self, _callable:Any) -> None:
+        # Assuming '_callable' is a function
+        self.name = _callable.__name__
+        self.func = _callable
+        self.signature = summarize_function(_callable)
+        self.schema = function_to_json_schema(_callable)
     
-    @property
-    def signature(self) -> str:
-        '''
-        Given the tool schema, returns the function signature as a string.
-        '''
-        return get_function_signature_from_schema(self.schema)
-
     @property
     def to_xml(self) -> str:
         return tools_to_xml([self])
 
-    def __call__(self,  **kwargs):
-        return callable(**kwargs)
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+
+
+def summarize_function(func: Callable) -> str:
+    """
+    Returns a one‑line summary of `func` in the form:
+      func_name(parameters) – first line of its docstring
+    """
+    sig = inspect.signature(func)
+    doc = (func.__doc__ or "").strip().splitlines()
+    summary = doc[0] if doc else "<no docstring>"
+    return f"{func.__name__}{sig} - {summary}"
 
 def python_type_to_json_schema(py_type: Any) -> Dict[str, Any]:
     """
@@ -174,11 +183,6 @@ def function_to_json_schema(func: Callable[..., Any]) -> Dict[str, Any]:
         schema["parameters"]["required"] = required
 
     return schema
-
-def any_to_prympt_tool(tool: Any) -> Tuple[Callable, Dict[str, Any]]:
-    # 'tool' is a Python function.
-    return tool, function_to_json_schema(tool)
-
 
 def tools_to_xml(tools: List[Tool]) -> str:
     """
@@ -308,3 +312,54 @@ def get_function_signature_from_schema(schema):
         params.append(param_str)
     
     return f"{schema['name']}({', '.join(params)}): {schema.get('description')}"
+
+
+def validate_and_cast(func, params: dict) -> dict:
+    sig   = inspect.signature(func)
+    hints = get_type_hints(func)
+
+    # Catch any keys that aren’t actual function parameters
+    unexpected = set(params) - set(sig.parameters)
+    if unexpected:
+        raise ToolCallError(f"Unexpected parameter(s): {', '.join(sorted(unexpected))}")
+
+    # Missing‑required check (skip params that have a default)
+    required = set(name for name, param in sig.parameters.items() if param.default is inspect._empty)
+    missing = required - set(params)
+    if missing:
+        raise ToolCallError(f"Missing required parameter(s): {', '.join(sorted(required))}")
+
+    # Pre‑parse any container literals
+    parsed = {}
+    for name, raw in params.items():
+        expected = hints.get(name, Any)
+        origin = getattr(expected, "__origin__", None)
+        if isinstance(raw, str) and origin in (list, dict, tuple, set):
+            try:
+                raw = ast.literal_eval(raw)
+            except Exception:
+                raise ToolCallError(
+                    f"Failed to parse value for parameter '{name}'. "
+                    f"Expected value of type '{expected}', got {raw!r}"
+                )
+        parsed[name] = raw
+
+    # Build Pydantic model using defaults where provided
+    fields = {}
+    for name, param in sig.parameters.items():
+        annotation = hints.get(name, Any)
+        default = param.default if param.default is not inspect._empty else ...
+        fields[name] = (annotation, default)
+
+    model = create_model(func.__name__ + "Params", **fields)
+
+    try:
+        return model(**parsed).dict()
+    except ValidationError as exc:
+        err   = exc.errors()[0]
+        param = err["loc"][0]
+        expected = hints.get(param, Any)
+        got = params.get(param)
+        raise ToolCallError(
+            f"Failed to validate parameter '{param}'. Expected {expected}, got {got!r}"
+        )

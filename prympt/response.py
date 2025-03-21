@@ -9,7 +9,7 @@ from typing import Iterator, List, Tuple, Any
 import json
 from .prompt import Prompt
 from .output import Output, xml_to_outputs
-from .tool_call import xml_to_tool_calls
+from .tool import xml_to_tool_calls
 from .exceptions import ResponseError, ToolCallError
 
 '''
@@ -134,7 +134,7 @@ class Response:
                         id = id,
                         name = name,
                         arguments = arguments,
-                        result = prompt.tools[name].callable(**arguments)
+                        result = prompt.tools[name].func(**arguments)
                     )
 
                     self.__tool_calls.append(tool_call_message)
