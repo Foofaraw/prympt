@@ -13,7 +13,9 @@ from dataclasses import dataclass, field
 
 from jinja2 import Environment, StrictUndefined, TemplateSyntaxError, nodes
 from jinja2.visitor import NodeVisitor
-from litellm import completion
+from litellm import completion, supports_function_calling, supports_parallel_function_calling
+
+
 
 from .exceptions import PrymptError, ConcatenationError, PromptError, ReplacementError, ResponseError
 from .output import Output, outputs_to_xml
@@ -55,11 +57,20 @@ def _jinja_substitution(template: str, **kwargs: Any) -> str:
     """
     return _jinja_env.from_string(template).render(**kwargs)
 
+from typing import Union
 
-def litellm_completion(prompt: str, *args: List[Any], **kwargs: Dict[str, Any]) -> str:
-    response = completion(messages=[dict(role="user", content=prompt)], *args, **kwargs)
-    return str(response.choices[0].message.content)
+def litellm_completion(
+    data: Union[str, dict], # Either string or message
+    *args: List[Any],
+    **kwargs: Dict[str, Any]
+    ) -> str:
+    
+    message = dict(role="user", content=data) if isinstance(data, str) else data
+    assert isinstance(message, dict)
 
+    response = completion(messages=[message], *args, **kwargs)
+
+    return response.choices[0].message
 
 class Prompt:
     """A class representing a prompt template with support for variables and outputs.
@@ -258,9 +269,9 @@ class Prompt:
     def to_string(self):
         return self.__str__()
        
-    def to_message(self, tools = False):
+    def to_message(self, native_tool_calling = True):
         
-        if tools and self.tools:
+        if (not native_tool_calling) and self.tools:
 
             # Compose string for signatures
             signatures = []
@@ -273,6 +284,7 @@ class Prompt:
             def tool_name(param1_name: str, param2_name: int, param3_name: int):
                 """Sample tool"""
                 pass
+            
             sample_tool_xml = Tool(tool_name).to_xml
 
             # Combine into tools template
@@ -288,7 +300,18 @@ class Prompt:
         return {"role": "user", "content": self.__str__() + tools_template }
 
     def tool_schemas(self) -> List[Dict[str,Any]]:
+        
+        if not self.tools.values():
+            print("No tools!")
+            return None
+        
         return [ { "type": "function", "function": tool.schema } for tool in self.tools.values() ]
+
+    def to_query_data(self, native_tool_calling = True):
+        return (
+            self.to_message(native_tool_calling),
+            self.tool_schemas() if native_tool_calling else None
+        )
 
     def query(
         self,
@@ -317,9 +340,16 @@ class Prompt:
         prompt, last_error = self, None
         
         for retry_time in range(retries):
-
             try:
-                return Response(llm_completion(prompt.to_string(), *args, **kwargs), prompt)
+
+                native_tool_calling = (
+                        supports_function_calling(model=kwargs['model']) and
+                        supports_parallel_function_calling(model=kwargs['model'])
+                    ) if 'model' in kwargs else False
+
+                message, tool_schemas = prompt.to_query_data(native_tool_calling = native_tool_calling)
+                
+                return Response(llm_completion(message, tools = tool_schemas, *args, **kwargs), prompt)                
 
             except PrymptError as e:
                    

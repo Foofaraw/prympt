@@ -1,7 +1,7 @@
 # Copyright (c) 2025 foofaraw (GitHub: foofaraw)
 # Licensed under the MIT License (see LICENSE file for details).
 
-from typing import Any, Union
+from typing import Any, Union, Dict, List
 
 import pytest
 
@@ -15,7 +15,9 @@ response_3_tries_valid = "This is the requested Python code:\n\n" + outputs_to_x
 
 
 def response_3_tries(
-    prompt: Union[str, None] = None, temperature: Union[float, None] = None
+    prompt: Union[str, None] = None,
+    tools: List[Dict] = [],
+    temperature: Union[float, None] = None
 ) -> str:
 
     response_3_tries.counter += 1  # type: ignore[attr-defined]
@@ -30,6 +32,38 @@ def response_3_tries(
         return response_3_tries_no_codeblock
     else:
         return response_3_tries_valid
+
+
+prompt_wrong_type = """
+This is a response with the wrong type:
+
+<outputs>
+  <output name="answer" description="The answer to everything" type="float">42.0</output>
+</outputs>
+
+"""
+
+def response_wrong_type(
+    prompt: Union[str, None],
+    tools: List[Dict] = [],    
+    ) -> str:
+    return prompt_wrong_type
+
+
+prompt_incorrect_outputs_number = """
+This is a response with the wrong type:
+
+<outputs>
+  <output name="answer" description="The answer to everything" type="float">42.0</output>
+</outputs>
+
+"""
+
+def response_incorrect_outputs_number(
+    prompt: Union[str, None],
+    tools: List[Dict] = [],    
+    ) -> str:
+    return prompt_wrong_type
 
 
 def test_3_retries() -> None:
@@ -60,20 +94,6 @@ def test_3_retries() -> None:
         assert response.__str__() == response_3_tries_valid
 
 
-prompt_wrong_type = """
-This is a response with the wrong type:
-
-<outputs>
-  <output name="answer" description="The answer to everything" type="float">42.0</output>
-</outputs>
-
-"""
-
-
-def response_wrong_type(prompt: Union[str, None]) -> str:
-    return prompt_wrong_type
-
-
 def test_wrong_type() -> None:
 
     prompt = Prompt("Answer to everything").returns("anwser", type="int")
@@ -91,19 +111,6 @@ def test_wrong_name() -> None:
         with pytest.raises(ResponseError):
             prompt.query(llm_completion=response_wrong_type, retries=1)
 
-
-prompt_incorrect_outputs_number = """
-This is a response with the wrong type:
-
-<outputs>
-  <output name="answer" description="The answer to everything" type="float">42.0</output>
-</outputs>
-
-"""
-
-
-def response_incorrect_outputs_number(prompt: Union[str, None]) -> str:
-    return prompt_wrong_type
 
 
 def test_incorrect_outputs_number() -> None:

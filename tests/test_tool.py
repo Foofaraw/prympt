@@ -20,6 +20,9 @@ from prympt.tool import (
     validate_and_cast,
 )
 
+#############################
+# Parameter type checking and conversion
+
 def math_function(
     a: int,
     b: Optional[str] = None,
@@ -50,11 +53,46 @@ def test_validate_and_cast_incorrect_missing_required() -> None:
     with pytest.raises(ToolCallError):    
         validate_and_cast(math_function, params)
 
-def test_validate_and_cast_incorrect_wrong_parameter() -> None:            
+def test_validate_and_cast_incorrect_wrong_parameter_name() -> None:            
     # Incorrect call with additional non-existing parameter 'e'.
     params = dict(a="1", b="hello", c="[2.0, 3.5]", e="10")
     with pytest.raises(ToolCallError):
         validate_and_cast(math_function, params)
+
+def test_validate_and_cast_incorrect_wrong_parameter_value() -> None:            
+    # Incorrect call with incorrect parameter value for 'c'.
+    params = dict(a="1", b="hello", c="errata [2.0, 3.5]")
+    with pytest.raises(ToolCallError):
+        validate_and_cast(math_function, params)
+
+#############################
+# Tool creation and calling
+def sample_function(a: int, b: Optional[str] = None, c: List[float] = [1.0]) -> int:
+    """
+    Sample function docstring.
+    """
+    return a + c[0]
+
+def test_tool_create() -> None:
+    tool_sample_function = Tool(sample_function)
+    
+    assert tool_sample_function.name == 'sample_function'
+    assert tool_sample_function.signature == 'sample_function(a: int, b: Optional[str] = None, c: List[float] = [1.0]) -> int - Sample function docstring.'
+
+def test_tool_call() -> None:
+    
+    tool = Tool(math_function)
+    
+    # Non-validated
+    non_validated_params = dict(a="1", b="hello", c="[2.0, 3.5]", d="{'y': '2'}")
+    assert tool(**non_validated_params) == 13.5
+    
+    # Validated
+    validated_params = dict(a=1, b='hello', c=[2.0, 3.5], d={'y': 2})
+    assert tool(**validated_params) == 13.5
+    
+#############################
+# Composition of tools in prompts
 
 def write_file(path: str, content: str) -> str:
     """
@@ -65,22 +103,6 @@ def write_file(path: str, content: str) -> str:
         content (str): The content to write to the file
     """
     return ""
-
-
-
-# Sample function for demonstration and testing.
-def sample_function(a: int, b: Optional[str] = None, c: List[float] = [1.0]) -> int:
-    """
-    Sample function docstring.
-    """
-    return a + c[0]
-
-
-def test_tool() -> None:
-    tool_sample_function = Tool(sample_function)
-    
-    assert tool_sample_function.name == 'sample_function'
-    assert tool_sample_function.signature == 'sample_function(a: int, b: Optional[str] = None, c: List[float] = [1.0]) -> int - Sample function docstring.'
     
 def test_prompt_tool() -> None:
     """

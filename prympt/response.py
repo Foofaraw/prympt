@@ -46,24 +46,27 @@ def _parse_llm_response(llm_response:Any) -> Tuple[str, Any]:
         except Exception:
             message = None    
 
+    tool_calls = []
+    
     if message:
+        content = message['content']
+        
         # Get tool calls from message
-        tool_calls = []
         if message['tool_calls']:
             for tool_call in message['tool_calls']:
                 id = tool_call['id']
                 name = tool_call['function']['name']
                 arguments = json.loads(tool_call['function']['arguments'])
                 tool_calls.append([id, name, arguments])
-        else:
-            # Try to get tool calls from the message content
-            tool_calls = xml_to_tool_calls(message['content'])
-            
-        return message['content'], tool_calls
-    
-    # llm_response must be a string
-    assert isinstance(llm_response, str), f"Error, llm_response is of type {type(llm_response)}"
-    return llm_response, []
+    else:            
+        assert isinstance(llm_response, str), f"Error, llm_response is of type {type(llm_response)}"
+        content = llm_response
+        
+    if not tool_calls:
+        # Try to get tool calls from content
+        tool_calls = xml_to_tool_calls(content)
+        
+    return content, tool_calls
     
 
 class Response:
@@ -118,10 +121,10 @@ class Response:
             if new_errors:
                 raise ResponseError("\n".join(new_errors))
 
+        self.__tool_calls = []
+
         if tool_calls:
-            
-            self.__tool_calls = []
-            
+                       
             # Appending output of function call
             for id, name, arguments in tool_calls:
                 
@@ -141,8 +144,8 @@ class Response:
 
                 except Exception as e:
                     raise ToolCallError(f"Using tool '{name}': {str(e)}")
-                                          
-            self.set_attribute('tool_calls', self.__tool_calls)
+                     
+        self.set_attribute('tool_calls', self.__tool_calls)
 
     def __str__(self) -> str:
         """Returns the raw response text."""

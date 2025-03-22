@@ -48,9 +48,8 @@ class Tool:
     def to_xml(self) -> str:
         return tools_to_xml([self])
 
-    def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
-
+    def __call__(self, **kwargs):
+        return self.func(**validate_and_cast(self.func, kwargs))
 
 def summarize_function(func: Callable) -> str:
     """
@@ -315,6 +314,61 @@ def get_function_signature_from_schema(schema):
 
 
 def validate_and_cast(func, params: dict) -> dict:
+    """
+    Validate and coerce a dictionary of string‑or‑native values against a target function’s signature.
+
+    This utility will:
+
+    1. Reject any keys in `params` that are not actual parameters of `func`.  
+    2. Enforce presence of all required parameters (those without default values).  
+    3. Automatically parse string literals for built‑in container types (list, dict, tuple, set) via `ast.literal_eval`.  
+    4. Build a temporary Pydantic model whose fields mirror `func`’s signature (including defaults) and leverage Pydantic’s powerful coercion & validation.  
+    5. Return a fully typed `dict` suitable for passing into `func`.
+
+    ### Design choices
+
+    - **inspect.signature + get_type_hints**: ensures runtime reflection of parameter names, defaults, and annotations.  
+    - **ast.literal_eval**: safely converts string representations of containers before handing off to Pydantic.  
+    - **Pydantic create_model**: centralizes type coercion/validation (including nested and optional types) with concise error reporting.  
+    - **ToolCallError**: a single exception type for all validation failures, simplifying caller error handling.
+
+    ### Requirements
+
+    - Python ≥3.8  
+    - Pydantic ≥2.0  
+    - Importable `ToolCallError` for raising validation errors  
+
+    ### Parameters
+
+    - **func** (`callable`): target function whose signature & type hints drive validation.  
+    - **params** (`dict[str, Any]`): mapping from parameter name → string or native value.
+
+    ### Returns
+
+    - **dict[str, Any]**: the same keys as `params`, but with values coerced into the types declared on `func`.
+
+    ### Raises
+
+    - **ToolCallError** if:
+        - Unexpected parameters are present.
+        - Required parameters are missing.
+        - A container literal fails to parse.
+        - A value cannot be coerced into its annotated type.
+
+    ### Example
+
+    ```python
+    from typing import Optional, List, Dict
+
+    def fn(a: int, b: Optional[str] = None, c: List[float] = [1.0]):
+        ...
+
+    params = {"a": "123", "c": "[2.5, 3.0]"}
+    validated = validate_and_cast(fn, params)
+    # → {"a": 123, "b": None, "c": [2.5, 3.0]}
+    ```
+    """
+        
     sig   = inspect.signature(func)
     hints = get_type_hints(func)
 
