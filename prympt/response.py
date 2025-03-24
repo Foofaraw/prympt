@@ -93,11 +93,37 @@ class Response:
 
         self.__outputs: List[Output] = xml_to_outputs(self.__raw_response_text)
 
-        # Add output contents as member variables in response object
-        for output in self.__outputs:
-            if output.name:
-                self.set_attribute(output.name, output.content)
+        self.tool_calls = []
 
+        if tool_calls:
+                       
+            # Appending output of function call
+            for id, name, arguments in tool_calls:
+                
+                if name not in prompt.tools:
+                    raise ResponseError(f"Tried to use unknown tool with name '{name}'")                
+                
+                try:
+
+                    tool_call_message = dict(
+                        id = id,
+                        name = name,
+                        arguments = arguments,
+                        content = prompt.tools[name].func(**arguments)
+                    )
+
+                    self.tool_calls.append(tool_call_message)
+
+                except Exception as e:
+                    raise ToolCallError(f"Using tool '{name}': {str(e)}")
+                     
+        self.tool_call_messages = [
+            {                               # append result message
+            "role": "tool",
+            "tool_call_id": tool_call['id'],
+            "content": tool_call['content'],
+            } for tool_call in self.tool_calls]
+                     
         # Check return types with prompt outputs
         if prompt.outputs:
 
@@ -120,32 +146,11 @@ class Response:
 
             if new_errors:
                 raise ResponseError("\n".join(new_errors))
-
-        self.__tool_calls = []
-
-        if tool_calls:
-                       
-            # Appending output of function call
-            for id, name, arguments in tool_calls:
-                
-                if name not in prompt.tools:
-                    raise ResponseError(f"Tried to use unknown tool with name '{name}'")                
-                
-                try:
-
-                    tool_call_message = dict(
-                        id = id,
-                        name = name,
-                        arguments = arguments,
-                        result = prompt.tools[name].func(**arguments)
-                    )
-
-                    self.__tool_calls.append(tool_call_message)
-
-                except Exception as e:
-                    raise ToolCallError(f"Using tool '{name}': {str(e)}")
-                     
-        self.set_attribute('tool_calls', self.__tool_calls)
+            
+        # Add output contents as member variables in response object
+        for output in self.__outputs:
+            if output.name:
+                self.set_attribute(output.name, output.content)
 
     def __str__(self) -> str:
         """Returns the raw response text."""
