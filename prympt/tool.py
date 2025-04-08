@@ -20,6 +20,9 @@ from typing import (
     get_origin,
     get_type_hints,
 )
+import uuid
+from lxml import etree
+
 import docstring_parser
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -231,50 +234,63 @@ def tools_to_xml(tools: List[Tool]) -> str:
 def xml_to_tool_calls(text: str) -> list:
     """
     Parses a string containing a <tool_calls> block and extracts the function names and parameters.
-
+    
+    If an id is not provided in the XML for a tool call, a random id is generated.
+    
     Args:
-        xml_string: A string containing the <tool_calls> XML block.
+        text (str): A string containing the <tool_calls> XML block.
 
     Returns:
-        A list of lists, where each inner list contains:
-        - The tool name (str).
-        - A list of parameter details, where each parameter is represented as:
-          [param_name (str), param_type (str), param_value (str)].
-    """    
+        list: A list of dictionaries, where each dictionary is formatted as:
+              {
+                  'id': <tool call id (str)>,
+                  'type': 'function',
+                  'function': {
+                      'name': <tool call name (str)>,
+                      'arguments': <JSON string of parameters dict>
+                  }
+              }
+    """
     
+    # Extract the XML block containing <tool_calls> from the input text.
     xml_string = find_last_xml_block(text, 'tool_calls')
-    
     if not xml_string:
         return []
-        
+
     # Parse the XML string
     root = etree.fromstring(xml_string)
 
-    # Initialize the result list
     result = []
 
     # Iterate over each <tool_call> element
     for tool_call in root.findall('tool_call'):
-        # Extract the tool name
+        # Use the provided id if available; otherwise, generate a new one.
+        tool_id = "call_" + uuid.uuid4().hex
+        
+        # Extract the tool call name
         tool_name = tool_call.get('name')
-
-        # Initialize the parameters list
-        params = []
-
-        # Iterate over each <param> element
+        
+        # Build the parameters dictionary.
+        params = {}
         for param in tool_call.findall('param'):
             param_name = param.get('name')
-            param_value = param.text.strip() if param.text else None
+            # Remove leading/trailing whitespace if text is provided
+            param_value = param.text.strip() if param.text else ""
+            if param_name and param_value:
+                params[param_name] = param_value
 
-            # Add the parameter details to the parameters list
-            if param_value:
-                params.append([param_name, param_value])
-
-        # Append the tool name and parameters to the result list
-        result.append([None, tool_name, dict(params)])
+        # Construct the output dictionary for this tool call.
+        output_entry = {
+            'id': tool_id,
+            'type': 'function',
+            'function': {
+                'name': tool_name,
+                'arguments': json.dumps(params)
+            }
+        }
+        result.append(output_entry)
 
     return result
-
 def get_function_signature_from_schema(schema):
     """
     Given a tool schema dictionary following OpenAI's API format,

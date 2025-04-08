@@ -12,29 +12,12 @@ from .output import Output, xml_to_outputs
 from .tool import xml_to_tool_calls
 from .exceptions import ResponseError, ToolCallError
 
-'''
-def tool_call_to_message(id, name, arguments, result):
-    return dict(
-        id = id,
-        name = name,
-        arguments = arguments,
-        result = result,
-    )
 
-def tool_call_to_OpenAI_message(id, name, arguments, result):
-    return dict(
-        role = "tool",
-        tool_call_id = id,
-        name = name,
-        content = result,
-    )
-'''
-
-def _parse_llm_response(llm_response:Any) -> Tuple[str, Any]:
+def _llm_response_to_message(llm_response:Any) -> Tuple[str, Any]:
     
     # Check if the response is empty
     if not llm_response:
-        return "", []
+        return dict( role = 'assistant', content = '')
 
     # Check if the response is a message
     try:
@@ -44,30 +27,17 @@ def _parse_llm_response(llm_response:Any) -> Tuple[str, Any]:
             assert isinstance(llm_response, dict)
             message = llm_response
         except Exception:
-            message = None    
+            assert isinstance(llm_response, str)
+            message = dict( role = 'assistant', content = llm_response)
+            
+    if 'tool_calls' not in message or not message['tool_calls']:
 
-    tool_calls = []
-    
-    if message:
-        content = message['content']
-        
-        # Get tool calls from message
-        if message['tool_calls']:
-            for tool_call in message['tool_calls']:
-                id = tool_call['id']
-                name = tool_call['function']['name']
-                arguments = json.loads(tool_call['function']['arguments'])
-                tool_calls.append([id, name, arguments])
-    else:            
-        assert isinstance(llm_response, str), f"Error, llm_response is of type {type(llm_response)}"
-        content = llm_response
-        
-    if not tool_calls:
-        # Try to get tool calls from content
-        tool_calls = xml_to_tool_calls(content)
-        
-    return content, tool_calls
-    
+        assert message['content']
+
+        if tool_calls := xml_to_tool_calls(message['content']):
+            message['tool_calls'] = tool_calls
+            
+    return message
 
 class Response:
     """
@@ -86,44 +56,50 @@ class Response:
         """
         Initializes a Response object. Parses the response text, according to the prompt content.
         """
-        
-        response_text, tool_calls = _parse_llm_response(llm_response)
-                
-        self.__raw_response_text: str = response_text if response_text else ""
+                        
+        message = _llm_response_to_message(llm_response)                
+               
+        self.messages = [ message ]
+                      
+        self.__raw_response_text: str = message['content'] if message['content'] else ""
 
         self.__outputs: List[Output] = xml_to_outputs(self.__raw_response_text)
 
         self.tool_calls = []
 
-        if tool_calls:
-                       
-            # Appending output of function call
-            for id, name, arguments in tool_calls:
+        if message['tool_calls']:
+                
+            for tool_call in message['tool_calls']:
+                id = tool_call['id']
+                name = tool_call['function']['name']
+                arguments = json.loads(tool_call['function']['arguments'])
                 
                 if name not in prompt.tools:
                     raise ResponseError(f"Tried to use unknown tool with name '{name}'")                
                 
                 try:
 
-                    tool_call_message = dict(
-                        id = id,
-                        name = name,
-                        arguments = arguments,
-                        content = prompt.tools[name].func(**arguments)
+                    content = prompt.tools[name].func(**arguments)
+                    
+                    tool_message = dict(
+                        role = 'tool',
+                        tool_call_id = id,
+                        content = content
                     )
 
-                    self.tool_calls.append(tool_call_message)
+                    tool_call = dict(
+                        name = name,
+                        arguments = arguments,
+                        content = content,
+                    )
 
+                    self.messages.append(tool_message)
+                    
+                    self.tool_calls.append(tool_call)
+                    
                 except Exception as e:
                     raise ToolCallError(f"Using tool '{name}': {str(e)}")
-                     
-        self.tool_call_messages = [
-            {                               # append result message
-            "role": "tool",
-            "tool_call_id": tool_call['id'],
-            "content": tool_call['content'],
-            } for tool_call in self.tool_calls]
-                     
+            
         # Check return types with prompt outputs
         if prompt.outputs:
 
