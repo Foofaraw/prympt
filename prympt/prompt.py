@@ -308,6 +308,10 @@ class Prompt:
         return [ { "type": "function", "function": tool.schema } for tool in self.tools.values() ]
 
     def to_query_data(self, native_tool_calling = True):
+        
+        # Native tool calling not working for now
+        assert not native_tool_calling
+        
         return (
             self.to_message(native_tool_calling),
             self.tool_schemas() if native_tool_calling else None

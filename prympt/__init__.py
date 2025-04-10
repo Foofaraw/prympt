@@ -13,6 +13,7 @@ from .exceptions import (
 from .output import Output
 from .prompt import Prompt, litellm_completion
 from .response import Response
+from .tool import Tool
 
 __all__ = [
     "PrymptError",
