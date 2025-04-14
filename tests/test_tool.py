@@ -17,7 +17,7 @@ from prympt import (
 )
 from prympt.tool import (
     Tool,
-    validate_and_cast,
+    validate_and_cast_tool_parameters,
 )
 
 #############################
@@ -34,7 +34,7 @@ def math_function(
 def test_validate_and_cast_correct() -> None:
     
     params = dict(a="1", b="hello", c="[2.0, 3.5]", d="{'y': '2'}")
-    validated_params = validate_and_cast(math_function, params)
+    validated_params = validate_and_cast_tool_parameters(math_function, params)
     
     # Correct call with all parameters.
     assert validated_params == dict(a=1, b='hello', c=[2.0, 3.5], d={'y': 2})
@@ -43,7 +43,7 @@ def test_validate_and_cast_correct() -> None:
 def test_validate_and_cast_correct_missing_optional() -> None:    
     # Correct call with missing optional parameter 'd'.
     params = dict(a="1", b="hello", c="[2.0, 3.5]")
-    validated_params = validate_and_cast(math_function, params)
+    validated_params = validate_and_cast_tool_parameters(math_function, params)
     assert validated_params == dict(a=1, b='hello', c=[2.0, 3.5], d={'x':1})
     assert math_function(**validated_params) == 11.5
 
@@ -51,19 +51,19 @@ def test_validate_and_cast_incorrect_missing_required() -> None:
     # Incorrect call with missing required parameter 'a'.
     params = dict(b="hello", c="[2.0, 3.5]")
     with pytest.raises(ToolCallError):    
-        validate_and_cast(math_function, params)
+        validate_and_cast_tool_parameters(math_function, params)
 
 def test_validate_and_cast_incorrect_wrong_parameter_name() -> None:            
     # Incorrect call with additional non-existing parameter 'e'.
     params = dict(a="1", b="hello", c="[2.0, 3.5]", e="10")
     with pytest.raises(ToolCallError):
-        validate_and_cast(math_function, params)
+        validate_and_cast_tool_parameters(math_function, params)
 
 def test_validate_and_cast_incorrect_wrong_parameter_value() -> None:            
     # Incorrect call with incorrect parameter value for 'c'.
     params = dict(a="1", b="hello", c="errata [2.0, 3.5]")
     with pytest.raises(ToolCallError):
-        validate_and_cast(math_function, params)
+        validate_and_cast_tool_parameters(math_function, params)
 
 #############################
 # Tool creation and calling

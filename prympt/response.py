@@ -9,7 +9,7 @@ from typing import Iterator, List, Tuple, Any
 import json
 from .prompt import Prompt
 from .output import Output, xml_to_outputs
-from .tool import xml_to_tool_calls
+from .tool import Tool, xml_to_tool_calls
 from .exceptions import ResponseError, ToolCallError
 
 
@@ -51,7 +51,8 @@ class Response:
         
     def __init__(
         self, llm_response: Any,
-        prompt: Prompt = Prompt()
+        prompt: Prompt = Prompt(),
+        tools: List[Tool] = None
         ):
         """
         Initializes a Response object. Parses the response text, according to the prompt content.
@@ -60,7 +61,8 @@ class Response:
         message = _llm_response_to_message(llm_response)                
                
         self.messages = [ message ]
-                      
+                   
+        self.__tools = tools   
         self.__raw_response_text: str = message['content'] if message['content'] else ""
 
         self.__outputs: List[Output] = xml_to_outputs(self.__raw_response_text)
@@ -74,12 +76,19 @@ class Response:
                 name = tool_call['function']['name']
                 arguments = json.loads(tool_call['function']['arguments'])
                 
-                if name not in prompt.tools:
-                    raise ResponseError(f"Tried to use unknown tool with name '{name}'")                
+                tentative_tools = [ tool for tool in tools if tool.name == name ]
+                
+                if not tentative_tools:
+                    raise ToolCallError(f"Tried to use unknown tool with name '{name}'")
+                
+                if len(tentative_tools) > 1:
+                    raise ToolCallError(f"Multiple tools with same name: '{name}'")                
+                
+                tool = tentative_tools[0]
                 
                 try:
 
-                    content = prompt.tools[name].func(**arguments)
+                    content = tool.func(**arguments)
                     
                     tool_message = dict(
                         role = 'tool',

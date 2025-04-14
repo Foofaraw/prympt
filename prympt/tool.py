@@ -7,6 +7,7 @@ from typing import get_type_hints
 from pydantic import create_model, ValidationError
 import json
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import (
     Any,
@@ -52,7 +53,7 @@ class Tool:
         return tools_to_xml([self])
 
     def __call__(self, **kwargs):
-        return self.func(**validate_and_cast(self.func, kwargs))
+        return self.func(**validate_and_cast_tool_parameters(self.func, kwargs))
 
 def summarize_function(func: Callable) -> str:
     """
@@ -329,7 +330,7 @@ def get_function_signature_from_schema(schema):
     return f"{schema['name']}({', '.join(params)}): {schema.get('description')}"
 
 
-def validate_and_cast(func, params: dict) -> dict:
+def validate_and_cast_tool_parameters(func, params: dict) -> dict:
     """
     Validate and coerce a dictionary of string‑or‑native values against a target function’s signature.
 
@@ -433,3 +434,50 @@ def validate_and_cast(func, params: dict) -> dict:
         raise ToolCallError(
             f"Failed to validate parameter '{param}'. Expected {expected}, got {got!r}"
         )
+
+
+def test_tools(tools:List[Tool]):
+
+    tool_names = [ tool.name for tool in tools ]
+    
+    overlapping_tools = [ tool_name for tool_name, count in Counter(tool_names).items() if count > 1]
+    if overlapping_tools:
+        raise ToolCallError(
+            f"Tools with overlapping names: {', '.join(overlapping_tools)}"
+        )
+    
+def tools_to_schemas(tools:List[Tool]):
+
+    test_tools(tools)
+    return [ { "type": "function", "function": tool.schema } for tool in tools ]
+
+def tools_to_prompt(tools:List[Tool]):
+
+    test_tools(tools)
+    
+    from .prompt import Prompt
+
+    if not tools:
+        return Prompt("")
+
+    # Compose string for signatures
+    signatures = []
+    for tool in tools:
+        signatures += [ tool.signature ]
+
+    signatures = "  - " + "\n  - ".join(signatures)
+
+    # Compose string for sample tool call
+    def tool_name(param1_name: str, param2_name: int, param3_name: int):
+        """Sample tool"""
+        pass
+    
+    sample_tool_xml = Tool(tool_name).to_xml
+
+    # Combine into tools template
+    return Prompt(
+        "\n\nThis is a list of the tools available:\n" +
+        signatures +
+        "\n\nProvide all your tool cals inside a single XML following this format:\n\n" +
+        sample_tool_xml
+    )

@@ -16,10 +16,9 @@ from jinja2.visitor import NodeVisitor
 from litellm import completion, supports_function_calling, supports_parallel_function_calling
 
 
-
 from .exceptions import PrymptError, ConcatenationError, PromptError, ReplacementError, ResponseError
 from .output import Output, outputs_to_xml
-from .tool import Tool
+from .tool import Tool, test_tools, tools_to_schemas, tools_to_prompt
 
 _jinja_env = Environment(undefined=StrictUndefined)
 
@@ -60,13 +59,18 @@ def _jinja_substitution(template: str, **kwargs: Any) -> str:
 from typing import Union
 
 def litellm_completion(
-    data: Union[str, dict], # Either string or message
+    data: Any, # Either string, message or prompt
     *args: List[Any],
     **kwargs: Dict[str, Any]
     ) -> str:
     
-    message = dict(role="user", content=data) if isinstance(data, str) else data
-    assert isinstance(message, dict)
+    if isinstance(data, str):
+        message = dict(role="user", content=data)
+    elif isinstance(data, Prompt):
+        message = dict(role="user", content=data.__str__())
+    else:
+        assert isinstance(message, dict)
+        message = dataclass
 
     response = completion(messages=[message], *args, **kwargs)
 
@@ -80,7 +84,7 @@ class Prompt:
         outputs (List[Output]): List of outputs.
     """
 
-    def __init__(self, template: str = "", outputs: List[Output] = [], tools: List[Tool] = []):
+    def __init__(self, template: str = "", outputs: List[Output] = []):
         """Initialize a Prompt instance.
 
         Args:
@@ -89,7 +93,6 @@ class Prompt:
         """
         self.template: str = template
         self.outputs: List[Output] = outputs
-        self.tools: Dict[str, Tool] = { tool.name: tool for tool in tools }
 
         # Make sure there are no outputs with duplicate names
         errors = []
@@ -132,8 +135,7 @@ class Prompt:
 
         return Prompt(
             _jinja_substitution(self.template, **kwargs),
-            outputs=self.outputs,
-            tools = self.tools.items(),
+            outputs=self.outputs
         )
 
     def __add__(self, other: Any) -> "Prompt":
@@ -157,16 +159,9 @@ class Prompt:
                 "Prompt error: trying to add Prompt to object other than str|Prompt for __add__"
             )
 
-        overlapping_tools = sorted(self.tools.keys() & other_prompt.tools.keys())
-        if overlapping_tools:
-            raise ConcatenationError(
-                f"Trying to concatenate two prompts with overlapping tools: {', '.join(overlapping_tools)}"
-            )
-            
         return Prompt(
             self.template + "\n" + other_prompt.template,
             outputs = self.outputs + other_prompt.outputs,
-            tools = (self.tools | other_prompt.tools).values(),
         )
 
     def __str__(self) -> str:
@@ -247,80 +242,23 @@ class Prompt:
         return Prompt(
             self.template,
             self.outputs + [Output(*args, **kwargs)],
-            self.tools.items(),
             )
 
-    def tool(self, callable) -> "Prompt":
-
-        tool = Tool(callable)
-        
-        if tool.name in self.tools:
-            raise PromptError(f"Tool '{tool.name}' already exists in prompt")
-        
-        return Prompt(
-            self.template,
-            self.outputs,
-            list(self.tools.items()) + [tool],
-            )
-    
     def error(self, error: PrymptError) -> Prompt:
         return self + f"\n\nMake sure to avoid the following error in your response: {str(error)}\n"
 
     def to_string(self):
         return self.__str__()
        
-    def to_message(self, native_tool_calling = True):
-        
-        if (not native_tool_calling) and self.tools:
+    def to_message(self):
 
-            # Compose string for signatures
-            signatures = []
-            for tool in self.tools.values():
-                signatures += [ tool.signature ]
-
-            signatures = "  - " + "\n  - ".join(signatures)
-
-            # Compose string for sample tool call
-            def tool_name(param1_name: str, param2_name: int, param3_name: int):
-                """Sample tool"""
-                pass
-            
-            sample_tool_xml = Tool(tool_name).to_xml
-
-            # Combine into tools template
-            tools_template = (
-                "\n\nThis is a list of the tools available:\n" +
-                signatures +
-                "\n\nProvide all your tool cals inside a single XML following this format:\n\n" +
-                sample_tool_xml
-            )
-        else:
-            tools_template = ""
-
-        return {"role": "user", "content": self.__str__() + tools_template }
-
-    def tool_schemas(self) -> List[Dict[str,Any]]:
-        
-        if not self.tools.values():
-            print("No tools!")
-            return None
-        
-        return [ { "type": "function", "function": tool.schema } for tool in self.tools.values() ]
-
-    def to_query_data(self, native_tool_calling = True):
-        
-        # Native tool calling not working for now
-        assert not native_tool_calling
-        
-        return (
-            self.to_message(native_tool_calling),
-            self.tool_schemas() if native_tool_calling else None
-        )
+        return {"role": "user", "content": self.__str__() }
 
     def query(
         self,
         llm_completion: Any = litellm_completion,
         retries: int = 4,
+        tools: List[Any] = None,
         *args: Any,
         **kwargs: Any,
     ) -> Any:
@@ -329,6 +267,7 @@ class Prompt:
         Args:
             llm_completion (Callable): The LLM completion function.
             retries (int): Number of retry attempts.
+            tools (List): List of tools available.
             *args: Additional positional arguments for llm_completion.
             **kwargs: Additional keyword arguments for llm_completion.
 
@@ -341,6 +280,9 @@ class Prompt:
 
         from .response import Response
         
+        tool_schemas = tools_to_schemas(tools)
+        tool_calling_prompt = tools_to_prompt(tools)
+        
         prompt, last_error = self, None
         
         for retry_time in range(retries):
@@ -351,9 +293,12 @@ class Prompt:
                         supports_parallel_function_calling(model=kwargs['model'])
                     ) if 'model' in kwargs else False
 
-                message, tool_schemas = prompt.to_query_data(native_tool_calling = native_tool_calling)
-                
-                return Response(llm_completion(message, tools = tool_schemas, *args, **kwargs), prompt)                
+                if native_tool_calling:
+                    llm_response = llm_completion(prompt, tools=tool_schemas, *args, **kwargs)
+                else:
+                    llm_response = llm_completion(prompt+tool_calling_prompt, *args, **kwargs)
+
+                return Response(llm_response, prompt, tools = tools)                
 
             except PrymptError as e:
                    
