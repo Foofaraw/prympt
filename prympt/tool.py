@@ -478,6 +478,6 @@ def tools_to_prompt(tools:List[Tool]):
     return Prompt(
         "\n\nThis is a list of the tools available:\n" +
         signatures +
-        "\n\nProvide all your tool cals inside a single XML following this format:\n\n" +
+        "\n\nProvide any and all tool cals inside a single XML following this format:\n\n" +
         sample_tool_xml
     )

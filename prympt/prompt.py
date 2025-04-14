@@ -258,7 +258,7 @@ class Prompt:
         self,
         llm_completion: Any = litellm_completion,
         retries: int = 4,
-        tools: List[Any] = None,
+        tools: List[Any] = [],
         *args: Any,
         **kwargs: Any,
     ) -> Any:
