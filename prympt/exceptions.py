@@ -5,7 +5,7 @@ class PrymptError(Exception):
     """Base exception class for Prympt errors."""
     pass
 
-class ToolCallError(Exception):
+class ToolCallError(PrymptError):
     """Base exception class for Prympt errors."""
     pass
 

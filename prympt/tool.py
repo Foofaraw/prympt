@@ -25,11 +25,8 @@ import uuid
 from lxml import etree
 
 import docstring_parser
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import Callable, Dict, Any
-from lxml import etree
-from xml.dom import minidom
 
 from .exceptions import ToolCallError
 from .output import find_last_xml_block
@@ -259,7 +256,10 @@ def xml_to_tool_calls(text: str) -> list:
         return []
 
     # Parse the XML string
-    root = etree.fromstring(xml_string)
+    try:
+        root = etree.fromstring(xml_string)
+    except etree.XMLSyntaxError as e:
+        raise ToolCallError(f"Error parsing tool calls in XML: {e}")
 
     result = []
 
@@ -292,6 +292,8 @@ def xml_to_tool_calls(text: str) -> list:
         result.append(output_entry)
 
     return result
+
+
 def get_function_signature_from_schema(schema):
     """
     Given a tool schema dictionary following OpenAI's API format,

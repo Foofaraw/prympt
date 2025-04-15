@@ -250,9 +250,9 @@ class Prompt:
     def to_string(self):
         return self.__str__()
        
-    def to_message(self):
+    def to_messages(self):
 
-        return {"role": "user", "content": self.__str__() }
+        return [ {"role": "user", "content": self.__str__() } ]
 
     def query(
         self,
@@ -286,8 +286,11 @@ class Prompt:
         prompt, last_error = self, None
         
         for retry_time in range(retries):
+            
             try:
 
+                raise PrymptError("Misc error")
+                
                 native_tool_calling = (
                         supports_function_calling(model=kwargs['model']) and
                         supports_parallel_function_calling(model=kwargs['model'])

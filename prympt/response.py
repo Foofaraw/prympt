@@ -9,7 +9,7 @@ from typing import Iterator, List, Tuple, Any
 import json
 from .prompt import Prompt
 from .output import Output, xml_to_outputs
-from .tool import Tool, xml_to_tool_calls
+from .tool import Tool, xml_to_tool_calls, test_tools
 from .exceptions import ResponseError, ToolCallError
 
 
@@ -61,7 +61,10 @@ class Response:
         message = _llm_response_to_message(llm_response)                
                
         self.messages = [ message ]
-                   
+                  
+        # Sanity check, test for duplicate tools 
+        test_tools(tools)
+        
         self.__tools = tools   
         self.__raw_response_text: str = message['content'] if message['content'] else ""
 
@@ -81,9 +84,9 @@ class Response:
                 if not tentative_tools:
                     raise ToolCallError(f"Tried to use unknown tool with name '{name}'")
                 
-                if len(tentative_tools) > 1:
-                    raise ToolCallError(f"Multiple tools with same name: '{name}'")                
-                
+                # Sanity check: we do not have duplicated tools in the tool list
+                assert len(tentative_tools) == 1
+
                 tool = tentative_tools[0]
                 
                 try:
