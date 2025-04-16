@@ -37,10 +37,10 @@ class ResponseError(PrymptError):
 class QueryError(PrymptError):
     """Base exception class for query errors."""
     
-    def __init__(self, errors: List[ResponseError]):
-        super().__init__(f"Failed LLM query (tried {len(errors)} times):\n" + "\n\t".join([ str(error) for error in errors]))
+    def __init__(self, prompt, errors: List[ResponseError]):
+        super().__init__(f"Failed LLM query (tried {len(errors)} times)")
+        self.prompt = prompt
         self.errors = errors
-
 
 class OutputError(PrymptError):
     """Base exception class for outputs-related errors."""

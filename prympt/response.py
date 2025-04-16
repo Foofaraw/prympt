@@ -10,7 +10,7 @@ import json
 from .prompt import Prompt
 from .output import Output, xml_to_outputs
 from .tool import Tool, xml_to_tool_calls, test_tools
-from .exceptions import ResponseError
+from .exceptions import ResponseError, ToolInitializationError
 
 
 def _llm_response_to_message(llm_response:Any) -> Tuple[str, Any]:
@@ -67,9 +67,13 @@ class Response:
         
         assert message['content']
 
-        if tool_calls := xml_to_tool_calls(message['content']):
-            message['tool_calls'] = tool_calls
-        
+        raise ResponseError("Failing for the test", self.messages)
+    
+        try:
+            if tool_calls := xml_to_tool_calls(message['content']):
+                message['tool_calls'] = tool_calls
+        except ToolInitializationError as e:
+            raise ResponseError(e.__str__())        
                   
         # Sanity check, test for duplicate tools 
         test_tools(tools)
