@@ -67,8 +67,6 @@ class Response:
         
         assert message['content']
 
-        raise ResponseError("Failing for the test", self.messages)
-    
         try:
             if tool_calls := xml_to_tool_calls(message['content']):
                 message['tool_calls'] = tool_calls
