@@ -1,11 +1,13 @@
 # Copyright (c) 2025 foofaraw (GitHub: foofaraw)
 # Licensed under the MIT License (see LICENSE file for details).
 
+from typing import Dict, List
+
 class PrymptError(Exception):
     """Base exception class for Prympt errors."""
     pass
 
-class ToolCallError(PrymptError):
+class ToolInitializationError(PrymptError):
     """Base exception class for Prympt errors."""
     pass
 
@@ -25,6 +27,21 @@ class ResponseError(PrymptError):
     """Base exception class for response-related errors."""
     pass
 
-class MalformedOutput(ResponseError):
-    """Exception raised for malformed outputs in responses."""
+class ResponseError(PrymptError):
+    """Base exception class for response-related errors."""
+    
+    def __init__(self, description: str, messages: Dict):
+        super().__init__(description)
+        self.messages = messages
+        
+class QueryError(PrymptError):
+    """Base exception class for query errors."""
+    
+    def __init__(self, errors: List[ResponseError]):
+        super().__init__(f"Failed LLM query (tried {len(errors)} times):\n" + "\n\t".join([ str(error) for error in errors]))
+        self.errors = errors
+
+
+class OutputError(PrymptError):
+    """Base exception class for outputs-related errors."""
     pass

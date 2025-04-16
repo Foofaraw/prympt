@@ -28,7 +28,7 @@ import docstring_parser
 from dataclasses import dataclass
 from typing import Callable, Dict, Any
 
-from .exceptions import ToolCallError
+from .exceptions import ToolInitializationError
 from .output import find_last_xml_block
 
 @dataclass
@@ -259,7 +259,7 @@ def xml_to_tool_calls(text: str) -> list:
     try:
         root = etree.fromstring(xml_string)
     except etree.XMLSyntaxError as e:
-        raise ToolCallError(f"Error parsing tool calls in XML: {e}")
+        raise ToolInitializationError(f"Error parsing tool calls in XML: {e}")
 
     result = []
 
@@ -349,13 +349,13 @@ def validate_and_cast_tool_parameters(func, params: dict) -> dict:
     - **inspect.signature + get_type_hints**: ensures runtime reflection of parameter names, defaults, and annotations.  
     - **ast.literal_eval**: safely converts string representations of containers before handing off to Pydantic.  
     - **Pydantic create_model**: centralizes type coercion/validation (including nested and optional types) with concise error reporting.  
-    - **ToolCallError**: a single exception type for all validation failures, simplifying caller error handling.
+    - **ToolInitializationError**: a single exception type for all validation failures, simplifying caller error handling.
 
     ### Requirements
 
     - Python ≥3.8  
     - Pydantic ≥2.0  
-    - Importable `ToolCallError` for raising validation errors  
+    - Importable `ToolInitializationError` for raising validation errors  
 
     ### Parameters
 
@@ -368,7 +368,7 @@ def validate_and_cast_tool_parameters(func, params: dict) -> dict:
 
     ### Raises
 
-    - **ToolCallError** if:
+    - **ToolInitializationError** if:
         - Unexpected parameters are present.
         - Required parameters are missing.
         - A container literal fails to parse.
@@ -394,13 +394,13 @@ def validate_and_cast_tool_parameters(func, params: dict) -> dict:
     # Catch any keys that aren’t actual function parameters
     unexpected = set(params) - set(sig.parameters)
     if unexpected:
-        raise ToolCallError(f"Unexpected parameter(s): {', '.join(sorted(unexpected))}")
+        raise ToolInitializationError(f"Unexpected parameter(s): {', '.join(sorted(unexpected))}")
 
     # Missing‑required check (skip params that have a default)
     required = set(name for name, param in sig.parameters.items() if param.default is inspect._empty)
     missing = required - set(params)
     if missing:
-        raise ToolCallError(f"Missing required parameter(s): {', '.join(sorted(required))}")
+        raise ToolInitializationError(f"Missing required parameter(s): {', '.join(sorted(required))}")
 
     # Pre‑parse any container literals
     parsed = {}
@@ -411,7 +411,7 @@ def validate_and_cast_tool_parameters(func, params: dict) -> dict:
             try:
                 raw = ast.literal_eval(raw)
             except Exception:
-                raise ToolCallError(
+                raise ToolInitializationError(
                     f"Failed to parse value for parameter '{name}'. "
                     f"Expected value of type '{expected}', got {raw!r}"
                 )
@@ -433,7 +433,7 @@ def validate_and_cast_tool_parameters(func, params: dict) -> dict:
         param = err["loc"][0]
         expected = hints.get(param, Any)
         got = params.get(param)
-        raise ToolCallError(
+        raise ToolInitializationError(
             f"Failed to validate parameter '{param}'. Expected {expected}, got {got!r}"
         )
 
@@ -444,7 +444,7 @@ def test_tools(tools:List[Tool]):
     
     overlapping_tools = [ tool_name for tool_name, count in Counter(tool_names).items() if count > 1]
     if overlapping_tools:
-        raise ToolCallError(
+        raise ToolInitializationError(
             f"Tools with overlapping names: {', '.join(overlapping_tools)}"
         )
     

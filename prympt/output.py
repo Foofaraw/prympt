@@ -10,7 +10,7 @@ from xml.dom import minidom
 
 from lxml import etree
 
-from .exceptions import MalformedOutput, ResponseError
+from .exceptions import OutputError
 
 
 def convert_to_Python_type(value_str: str, type_str: str) -> Any:
@@ -23,7 +23,7 @@ def convert_to_Python_type(value_str: str, type_str: str) -> Any:
     }
 
     if type_str not in safe_globals:
-        raise ResponseError(
+        raise OutputError(
             f"Tried to create Output with a non-standard basic Python type: '{type_str}'"
         )
 
@@ -31,7 +31,7 @@ def convert_to_Python_type(value_str: str, type_str: str) -> Any:
         parsed_type = eval(type_str, safe_globals)
         return parsed_type(ast.literal_eval(value_str))
     except SyntaxError:
-        raise MalformedOutput(
+        raise OutputError(
             f"Could not cast parameter value '{value_str}' to suggested type '{type_str}'"
         )
 
@@ -48,7 +48,7 @@ class Output:
     def __post_init__(self) -> None:
 
         if self.name and not self.name.isidentifier():
-            raise MalformedOutput(
+            raise OutputError(
                 f"Invalid output name: '{self.name}'. Must comply with Python identifier format: [a-z_][a-z0-9_-]*"
             )
 

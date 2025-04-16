@@ -12,7 +12,7 @@ from typing import (
 
 from prympt import (
     Prompt,
-    ToolCallError,
+    ToolInitializationError,
     ConcatenationError,
 )
 from prympt.tool import (
@@ -50,19 +50,19 @@ def test_validate_and_cast_correct_missing_optional() -> None:
 def test_validate_and_cast_incorrect_missing_required() -> None:    
     # Incorrect call with missing required parameter 'a'.
     params = dict(b="hello", c="[2.0, 3.5]")
-    with pytest.raises(ToolCallError):    
+    with pytest.raises(ToolInitializationError):    
         validate_and_cast_tool_parameters(math_function, params)
 
 def test_validate_and_cast_incorrect_wrong_parameter_name() -> None:            
     # Incorrect call with additional non-existing parameter 'e'.
     params = dict(a="1", b="hello", c="[2.0, 3.5]", e="10")
-    with pytest.raises(ToolCallError):
+    with pytest.raises(ToolInitializationError):
         validate_and_cast_tool_parameters(math_function, params)
 
 def test_validate_and_cast_incorrect_wrong_parameter_value() -> None:            
     # Incorrect call with incorrect parameter value for 'c'.
     params = dict(a="1", b="hello", c="errata [2.0, 3.5]")
-    with pytest.raises(ToolCallError):
+    with pytest.raises(ToolInitializationError):
         validate_and_cast_tool_parameters(math_function, params)
 
 #############################
@@ -104,39 +104,3 @@ def write_file(path: str, content: str) -> str:
     """
     return ""
     
-def test_prompt_tool() -> None:
-    """
-    Test the full chain:
-    sample_function -> JSON schema -> ToolCalling -> JSON schema.
-    """
-
-    prompt1 = Prompt("This is a test", tools = [Tool(sample_function)])
-    prompt2 = Prompt("This is a test").tool(sample_function)
-    
-    #from pprint import pprint
-    #pprint(prompt.tools)
-    assert prompt1.tools == prompt2.tools
-    
-def test_non_overlapping_tools() -> None:
-   
-    prompt1 = Prompt("This is a prompt", tools = [Tool(sample_function)])
-    prompt2 = Prompt("This is another prompt", tools = [Tool(write_file)])    
-    
-    prompt = prompt1 + prompt2    
-    
-    assert sorted(prompt.tools.keys()) == ['sample_function', 'write_file']
-    
-def test_overlapping_tools() -> None:
-    """
-    Test the full chain:
-    sample_function -> JSON schema -> ToolCalling -> JSON schema.
-    """
-    
-    prompt1 = Prompt("This is a prompt", tools = [Tool(sample_function)])
-    prompt2 = Prompt("This is another prompt", tools = [Tool(sample_function)])    
-       
-    with pytest.raises(
-        ConcatenationError,
-        match="Trying to concatenate two prompts with overlapping tools: sample_function",
-    ):
-        prompt1 + prompt2

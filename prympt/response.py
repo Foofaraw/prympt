@@ -10,7 +10,7 @@ import json
 from .prompt import Prompt
 from .output import Output, xml_to_outputs
 from .tool import Tool, xml_to_tool_calls, test_tools
-from .exceptions import ResponseError, ToolCallError
+from .exceptions import ResponseError
 
 
 def _llm_response_to_message(llm_response:Any) -> Tuple[str, Any]:
@@ -30,13 +30,6 @@ def _llm_response_to_message(llm_response:Any) -> Tuple[str, Any]:
             assert isinstance(llm_response, str)
             message = dict( role = 'assistant', content = llm_response)
             
-    if 'tool_calls' not in message or not message['tool_calls']:
-
-        assert message['content']
-
-        if tool_calls := xml_to_tool_calls(message['content']):
-            message['tool_calls'] = tool_calls
-            
     return message
 
 class Response:
@@ -46,21 +39,37 @@ class Response:
 
     def set_attribute(self, name:str, content:Any):
         if hasattr(self, name):
-            raise ResponseError(f"Tried to add two outputs with name {name}")
+            raise ResponseError(
+                f"Tried to add two outputs with name {name}",
+                self.messages,
+                )
+            
         setattr(self, name, content)
         
     def __init__(
         self, llm_response: Any,
         prompt: Prompt = Prompt(),
-        tools: List[Tool] = None
+        tools: List[Tool] = []
         ):
+        
         """
         Initializes a Response object. Parses the response text, according to the prompt content.
         """
                         
+        # Convert LLM response to message
         message = _llm_response_to_message(llm_response)                
                
         self.messages = [ message ]
+
+        # Find tool calls in message content
+        if 'tool_calls' in message and message['tool_calls']:
+            return
+        
+        assert message['content']
+
+        if tool_calls := xml_to_tool_calls(message['content']):
+            message['tool_calls'] = tool_calls
+        
                   
         # Sanity check, test for duplicate tools 
         test_tools(tools)
@@ -72,7 +81,7 @@ class Response:
 
         self.tool_calls = []
 
-        if message['tool_calls']:
+        if 'tool_calls' in message and message['tool_calls']:
                 
             for tool_call in message['tool_calls']:
                 id = tool_call['id']
@@ -82,7 +91,10 @@ class Response:
                 tentative_tools = [ tool for tool in tools if tool.name == name ]
                 
                 if not tentative_tools:
-                    raise ToolCallError(f"Tried to use unknown tool with name '{name}'")
+                    raise ResponseError(
+                        f"Tried to use unknown tool with name '{name}'",
+                        self.messages
+                        )
                 
                 # Sanity check: we do not have duplicated tools in the tool list
                 assert len(tentative_tools) == 1
@@ -110,14 +122,17 @@ class Response:
                     self.tool_calls.append(tool_call)
                     
                 except Exception as e:
-                    raise ToolCallError(f"Using tool '{name}': {str(e)}")
+                    raise ResponseError(f"Using tool '{name}': {str(e)}", self.messages)
             
         # Check return types with prompt outputs
         if prompt.outputs:
 
             # Check that expected and responded outputs are compatible
             if len(prompt.outputs) != self.__len__():
-                raise ResponseError(f"Expected {len(prompt.outputs)} outputs in LLM response, but got {self.__len__()}")
+                raise ResponseError(
+                    f"Expected {len(prompt.outputs)} outputs in LLM response, but got {self.__len__()}",
+                    self.messages
+                    )
 
             new_errors = []
             for index, (defined, responded) in enumerate(
@@ -133,7 +148,7 @@ class Response:
                     ]
 
             if new_errors:
-                raise ResponseError("\n".join(new_errors))
+                raise ResponseError("\n".join(new_errors), self.messages)
             
         # Add output contents as member variables in response object
         for output in self.__outputs:

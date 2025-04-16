@@ -16,7 +16,7 @@ from jinja2.visitor import NodeVisitor
 from litellm import completion, supports_function_calling, supports_parallel_function_calling
 
 
-from .exceptions import PrymptError, ConcatenationError, PromptError, ReplacementError, ResponseError
+from .exceptions import PrymptError, ConcatenationError, PromptError, ReplacementError, ResponseError, QueryError
 from .output import Output, outputs_to_xml
 from .tool import Tool, test_tools, tools_to_schemas, tools_to_prompt
 
@@ -283,13 +283,13 @@ class Prompt:
         tool_schemas = tools_to_schemas(tools)
         tool_calling_prompt = tools_to_prompt(tools)
         
-        prompt, last_error = self, None
+        prompt = self
+        
+        errors = []
         
         for retry_time in range(retries):
             
             try:
-
-                raise PrymptError("Misc error")
                 
                 native_tool_calling = (
                         supports_function_calling(model=kwargs['model']) and
@@ -301,15 +301,18 @@ class Prompt:
                 else:
                     llm_response = llm_completion(prompt+tool_calling_prompt, *args, **kwargs)
 
-                return Response(llm_response, prompt, tools = tools)                
+                response = Response(llm_response, prompt, tools = tools)
+                response.errors = errors
+                
+                return response
 
-            except PrymptError as e:
-                   
-                warn_message = f"WARNING: failed LLM query (try {retry_time} out of {retries}), reason: {str(e)}" 
-                warnings.warn(warn_message, RuntimeWarning)
+            except ResponseError as e:
+
+                #warn_message = f"WARNING: failed LLM query (try {retry_time} out of {retries}), reason: {str(e)}" 
+                #warnings.warn(warn_message, RuntimeWarning)
                 
                 prompt = prompt.error(e)
-                last_error = e
+                errors.append(e)
 
-        raise last_error
+        raise QueryError(errors)
     

@@ -4,11 +4,12 @@
 from .exceptions import (
     PrymptError,
     ConcatenationError,
-    MalformedOutput,
+    OutputError,
     PromptError,
     ReplacementError,
     ResponseError,
-    ToolCallError,
+    QueryError,
+    ToolInitializationError,
 )
 from .output import Output
 from .prompt import Prompt, litellm_completion
@@ -19,10 +20,10 @@ __all__ = [
     "PrymptError",
     "ConcatenationError",
     "ReplacementError",
-    "MalformedOutput",
+    "OutputError",
     "PromptError",
     "ResponseError",
-    "ToolCallError",
+    "ToolInitializationError",
     "Output",
     "Prompt",
     "Response",
