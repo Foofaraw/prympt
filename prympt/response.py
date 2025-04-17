@@ -7,6 +7,7 @@ from __future__ import (  # Required for forward references in older Python vers
 
 from typing import Iterator, List, Tuple, Any
 import json
+from xml.etree.ElementTree import ParseError
 from .prompt import Prompt
 from .output import Output, xml_to_outputs
 from .tool import Tool, xml_to_tool_calls, test_tools
@@ -71,7 +72,7 @@ class Response:
             if tool_calls := xml_to_tool_calls(message['content']):
                 message['tool_calls'] = tool_calls
         except ToolInitializationError as e:
-            raise ResponseError(e.__str__())        
+            raise ResponseError(f"Error parsing XML to get tool calls: {e.__str__()}", self.messages)        
                   
         # Sanity check, test for duplicate tools 
         test_tools(tools)
@@ -79,7 +80,10 @@ class Response:
         self.__tools = tools   
         self.__raw_response_text: str = message['content'] if message['content'] else ""
 
-        self.__outputs: List[Output] = xml_to_outputs(self.__raw_response_text)
+        try:
+            self.__outputs: List[Output] = xml_to_outputs(self.__raw_response_text)
+        except ParseError as e:
+            raise ResponseError(f"Error parsing XML to get outputs: {e.__str__()}", self.messages)        
 
         self.tool_calls = []
 

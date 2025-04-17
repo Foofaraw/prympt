@@ -257,7 +257,7 @@ class Prompt:
     def query(
         self,
         llm_completion: Any = litellm_completion,
-        retries: int = 4,
+        max_retries: int = 4,
         tools: List[Any] = [],
         *args: Any,
         **kwargs: Any,
@@ -287,7 +287,7 @@ class Prompt:
         
         errors = []
         
-        for retry_time in range(retries):
+        for retry_time in range(max_retries):
             
             try:
                 
@@ -307,9 +307,6 @@ class Prompt:
                 return response
 
             except ResponseError as e:
-
-                #warn_message = f"WARNING: failed LLM query (try {retry_time} out of {retries}), reason: {str(e)}" 
-                #warnings.warn(warn_message, RuntimeWarning)
                 
                 prompt = prompt.error(e)
                 errors.append(e)

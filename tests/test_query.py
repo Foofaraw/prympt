@@ -79,7 +79,7 @@ def test_3_retries() -> None:
 
     response_3_tries.counter = 0  # type: ignore[attr-defined]
     with pytest.raises(QueryError) as exc_info:
-        prompt_3_tries.query(retries=1, **query_params)
+        prompt_3_tries.query(max_retries=1, **query_params)
 
     # Check that the error we got is the one expected
     query_error = exc_info.value
@@ -90,7 +90,7 @@ def test_3_retries() -> None:
     for retries in range(2, 3):
         response_3_tries.counter = 0  # type: ignore[attr-defined]
         with pytest.raises(QueryError) as exc_info:
-            prompt_3_tries.query(retries=retries, **query_params)
+            prompt_3_tries.query(max_retries=retries, **query_params)
 
         # Check that the error we got is the one expected
         query_error = exc_info.value
@@ -99,7 +99,7 @@ def test_3_retries() -> None:
         assert query_error.errors[0].__str__() == "Expected 1 outputs in LLM response, but got 0"
 
     response_3_tries.counter = 0  # type: ignore[attr-defined]
-    response = prompt_3_tries.query(retries=3, **query_params)
+    response = prompt_3_tries.query(max_retries=3, **query_params)
 
     assert response.__str__() == response_3_tries_valid
     # Check that the errors we got is the one expected
@@ -114,7 +114,7 @@ def test_wrong_type() -> None:
     prompt = Prompt("Answer to everything").returns("anwser", type="int")
 
     with pytest.raises(QueryError) as exc_info:
-        prompt.query(llm_completion=response_wrong_type, retries=1)
+        prompt.query(llm_completion=response_wrong_type, max_retries=1)
 
     # Check that the error(s) we got are the one(s) we expected
     query_error = exc_info.value
@@ -127,7 +127,7 @@ def test_wrong_name() -> None:
     prompt = Prompt("Answer to everything").returns("anser", type="float")
 
     with pytest.raises(QueryError) as exc_info:
-        prompt.query(llm_completion=response_wrong_type, retries=1)
+        prompt.query(llm_completion=response_wrong_type, max_retries=1)
 
     # Check that the error(s) we got are the one(s) we expected
     query_error = exc_info.value
@@ -140,7 +140,7 @@ def test_incorrect_outputs_number() -> None:
     prompt = Prompt("Answer to everything").returns("anser", type="int").returns("")
 
     with pytest.raises(QueryError) as exc_info:
-        prompt.query(llm_completion=response_wrong_type, retries=1)
+        prompt.query(llm_completion=response_wrong_type, max_retries=1)
 
     # Check that the error(s) we got are the one(s) we expected
     query_error = exc_info.value
