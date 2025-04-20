@@ -311,5 +311,5 @@ class Prompt:
                 prompt = prompt.error(e)
                 errors.append(e)
 
-        raise QueryError(self, errors)
+        raise QueryError(prompt+tool_calling_prompt, errors)
     

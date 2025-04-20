@@ -135,8 +135,12 @@ class Response:
 
             # Check that expected and responded outputs are compatible
             if len(prompt.outputs) != self.__len__():
+                
+                expected_outputs = ",".join(sorted([ output.name for output in prompt.outputs ]))
+                obtained_outputs = ",".join(sorted([ output.name for output in self.__outputs ]))
+                
                 raise ResponseError(
-                    f"Expected {len(prompt.outputs)} outputs in LLM response, but got {self.__len__()}",
+                    f"Expected {len(prompt.outputs)} outputs in LLM response ({expected_outputs}), but got {self.__len__()} ({obtained_outputs})",
                     self.messages
                     )
 
