@@ -453,7 +453,8 @@ def tools_to_schemas(tools:List[Tool]):
     test_tools(tools)
     return [ { "type": "function", "function": tool.schema } for tool in tools ]
 
-def tools_to_prompt(tools:List[Tool]):
+
+def tools_descriptions(tools:List[Tool]):
 
     test_tools(tools)
     
@@ -467,8 +468,19 @@ def tools_to_prompt(tools:List[Tool]):
     for tool in tools:
         signatures += [ tool.signature ]
 
-    signatures = "  - " + "\n  - ".join(signatures)
+    return "  - " + "\n  - ".join(signatures)
 
+def tools_to_prompt(tools:List[Tool]):
+
+    test_tools(tools)
+    
+    from .prompt import Prompt
+
+    if not tools:
+        return Prompt("")
+
+    signatures = tools_descriptions(tools)
+    
     # Compose string for sample tool call
     def tool_name(param1_name: str, param2_name: int, param3_name: int):
         """Sample tool"""
