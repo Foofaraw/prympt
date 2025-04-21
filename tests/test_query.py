@@ -85,7 +85,7 @@ def test_3_retries() -> None:
     query_error = exc_info.value
     assert query_error.__str__().startswith("Failed LLM query (tried 1 times)")
     assert len(query_error.errors) == 1
-    assert query_error.errors[0].__str__() == "Expected 1 outputs in LLM response, but got 0"
+    assert query_error.errors[0].__str__() == "Expected 1 outputs in LLM response (python), but got 0 ()"
     
     for retries in range(2, 3):
         response_3_tries.counter = 0  # type: ignore[attr-defined]
@@ -95,8 +95,8 @@ def test_3_retries() -> None:
         # Check that the error we got is the one expected
         query_error = exc_info.value
         assert query_error.__str__().startswith(f"Failed LLM query (tried {retries} times)")
-        assert len(query_error.errors) == retries
-        assert query_error.errors[0].__str__() == "Expected 1 outputs in LLM response, but got 0"
+        assert len(query_error.errors) == retries        
+        assert query_error.errors[0].__str__() == "Expected 1 outputs in LLM response (python), but got 0 ()"
 
     response_3_tries.counter = 0  # type: ignore[attr-defined]
     response = prompt_3_tries.query(max_retries=3, **query_params)
@@ -105,8 +105,8 @@ def test_3_retries() -> None:
     # Check that the errors we got is the one expected
     errors = response.errors    
     assert errors
-    assert len(errors) == 2
-    assert errors[0].__str__() == "Expected 1 outputs in LLM response, but got 0"
+    assert len(errors) == 2    
+    assert errors[0].__str__() == "Expected 1 outputs in LLM response (python), but got 0 ()"
 
 
 def test_wrong_type() -> None:
@@ -146,4 +146,4 @@ def test_incorrect_outputs_number() -> None:
     query_error = exc_info.value
     assert query_error.__str__().startswith(f"Failed LLM query (tried 1 times)")
     assert len(query_error.errors) == 1
-    assert query_error.errors[0].__str__() == "Expected 2 outputs in LLM response, but got 1"    
+    assert query_error.errors[0].__str__() == "Expected 2 outputs in LLM response (,anser), but got 1 (answer)"

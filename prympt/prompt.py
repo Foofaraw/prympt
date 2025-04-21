@@ -287,7 +287,7 @@ class Prompt:
         
         errors = []
         
-        for retry_time in range(max_retries):
+        for __ in range(max_retries):
             
             try:
                 
@@ -307,7 +307,6 @@ class Prompt:
                 return response
 
             except ResponseError as e:
-                
                 prompt = prompt.error(e)
                 errors.append(e)
 

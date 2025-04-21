@@ -56,12 +56,70 @@ class Response:
         """
         Initializes a Response object. Parses the response text, according to the prompt content.
         """
-                        
+                
         # Convert LLM response to message
         message = _llm_response_to_message(llm_response)                
-               
-        self.messages = [ message ]
+        self.messages = [ message ]               
+        
+        # Sanity check, test for duplicate tools 
+        test_tools(tools)
+        
+        self.__tools = tools   
+        self.__raw_response_text: str = message['content'] if message['content'] else ""
+        self.prompt = prompt
 
+        self.__init_outputs()
+        self.__init_tool_calls()
+
+
+    def __init_outputs(self):
+        
+        try:
+            self.__outputs: List[Output] = xml_to_outputs(self.__raw_response_text)
+        except ParseError as e:
+            raise ResponseError(f"Error parsing XML to get outputs: {e.__str__()}", self.messages)        
+        
+    
+        # Check return types with prompt outputs
+        if self.prompt.outputs:
+
+            # Check that expected and responded outputs are compatible
+            if len(self.prompt.outputs) != self.__len__():
+                
+                expected_outputs = ",".join(sorted([ output.name for output in self.prompt.outputs ]))
+                obtained_outputs = ",".join(sorted([ output.name for output in self.__outputs ]))
+                
+                raise ResponseError(
+                    f"Expected {len(self.prompt.outputs)} outputs in LLM response ({expected_outputs}), but got {self.__len__()} ({obtained_outputs})",
+                    self.messages
+                    )
+
+            new_errors = []
+            for index, (defined, responded) in enumerate(
+                zip(self.prompt.outputs, self)
+            ):
+                if defined.name != responded.name:
+                    new_errors += [
+                        f"Name for output at position {index} ('{defined.name}') differs from the one provided by LLM ('{responded.name}')\n"
+                    ]
+                if defined.type != responded.type:
+                    new_errors += [
+                        f"Type for output at position {index} ('{defined.type}') differs from the one provided by LLM ('{responded.type}')\n"
+                    ]
+
+            if new_errors:
+                raise ResponseError("\n".join(new_errors), self.messages)
+            
+        # Add output contents as member variables in response object
+        for output in self.__outputs:
+            if output.name:
+                self.set_attribute(output.name, output.content)
+
+
+    def __init_tool_calls(self):
+        
+        message = self.messages[0]
+        
         # Find tool calls in message content
         if 'tool_calls' in message and message['tool_calls']:
             return
@@ -74,17 +132,6 @@ class Response:
         except ToolInitializationError as e:
             raise ResponseError(f"Error parsing XML to get tool calls: {e.__str__()}", self.messages)        
                   
-        # Sanity check, test for duplicate tools 
-        test_tools(tools)
-        
-        self.__tools = tools   
-        self.__raw_response_text: str = message['content'] if message['content'] else ""
-
-        try:
-            self.__outputs: List[Output] = xml_to_outputs(self.__raw_response_text)
-        except ParseError as e:
-            raise ResponseError(f"Error parsing XML to get outputs: {e.__str__()}", self.messages)        
-
         self.tool_calls = []
 
         if 'tool_calls' in message and message['tool_calls']:
@@ -94,7 +141,7 @@ class Response:
                 name = tool_call['function']['name']
                 arguments = json.loads(tool_call['function']['arguments'])
                 
-                tentative_tools = [ tool for tool in tools if tool.name == name ]
+                tentative_tools = [ tool for tool in self.__tools if tool.name == name ]
                 
                 if not tentative_tools:
                     raise ResponseError(
@@ -129,42 +176,8 @@ class Response:
                     
                 except Exception as e:
                     raise ResponseError(f"Using tool '{name}': {str(e)}", self.messages)
-            
-        # Check return types with prompt outputs
-        if prompt.outputs:
-
-            # Check that expected and responded outputs are compatible
-            if len(prompt.outputs) != self.__len__():
                 
-                expected_outputs = ",".join(sorted([ output.name for output in prompt.outputs ]))
-                obtained_outputs = ",".join(sorted([ output.name for output in self.__outputs ]))
-                
-                raise ResponseError(
-                    f"Expected {len(prompt.outputs)} outputs in LLM response ({expected_outputs}), but got {self.__len__()} ({obtained_outputs})",
-                    self.messages
-                    )
-
-            new_errors = []
-            for index, (defined, responded) in enumerate(
-                zip(prompt.outputs, self)
-            ):
-                if defined.name != responded.name:
-                    new_errors += [
-                        f"Name for output at position {index} ('{defined.name}') differs from the one provided by LLM ('{responded.name}')\n"
-                    ]
-                if defined.type != responded.type:
-                    new_errors += [
-                        f"Type for output at position {index} ('{defined.type}') differs from the one provided by LLM ('{responded.type}')\n"
-                    ]
-
-            if new_errors:
-                raise ResponseError("\n".join(new_errors), self.messages)
             
-        # Add output contents as member variables in response object
-        for output in self.__outputs:
-            if output.name:
-                self.set_attribute(output.name, output.content)
-
     def __str__(self) -> str:
         """Returns the raw response text."""
         return self.__raw_response_text
