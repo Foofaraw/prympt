@@ -138,6 +138,25 @@ class Prompt:
             outputs=self.outputs
         )
 
+    def __mul__(self, times: int) -> "Prompt":
+        """Repeats a prompt multiple times
+
+        Args:
+            timesr (int): The number of times to repeat the prompt.
+
+        Returns:
+            Prompt: A new Prompt, that contains as many copies of the original prompt as indicated by the variable **times**.
+
+        Raises:
+            ConcatenationError: If trying to add a non-string or non-Prompt object.
+        """
+
+        result = sum([Prompt(self.template)]*times, Prompt(""))
+        
+        result.outputs = self.outputs
+        
+        return result
+
     def __add__(self, other: Any) -> "Prompt":
         """Concatenate two prompts.
 

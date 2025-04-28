@@ -178,6 +178,16 @@ def test_add_prompt_string() -> None:
 
     assert obtained_outputs == expected_outputs
 
+def test_mul_prompt_string() -> None:
+    """Test adding a string to a prompt."""
+    prompt = Prompt("This is a sample prompt.")
+    prompt_x_3 = sum([prompt]*3, Prompt(""))
+    
+    prompt = prompt.output("text", "color, e.g. red")
+    prompt_x_3 = prompt_x_3.output("text", "color, e.g. red")
+    
+    assert prompt_x_3.__str__() == prompt_x_3.__str__()
+    assert prompt_x_3.outputs == prompt.outputs
 
 def test_add_prompt_none() -> None:
     """Test adding None to a prompt, expecting an error."""
