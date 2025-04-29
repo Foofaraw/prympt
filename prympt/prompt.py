@@ -72,7 +72,7 @@ def litellm_completion(
         assert isinstance(message, dict)
         message = dataclass
 
-    response = completion(messages=[message], *args, **kwargs)
+    response = completion(messages=[message], num_retries=0, *args, **kwargs)
 
     return response.choices[0].message
 
@@ -310,11 +310,13 @@ class Prompt:
             
             try:
                 
+                native_tool_calling = False
+                '''
                 native_tool_calling = (
                         supports_function_calling(model=kwargs['model']) and
                         supports_parallel_function_calling(model=kwargs['model'])
                     ) if 'model' in kwargs else False
-
+                '''
                 if native_tool_calling:
                     llm_response = llm_completion(prompt, tools=tool_schemas, *args, **kwargs)
                 else:
