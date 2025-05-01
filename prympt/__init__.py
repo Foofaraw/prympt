@@ -15,6 +15,7 @@ from .output import Output
 from .prompt import Prompt, litellm_completion
 from .response import Response
 from .tool import Tool
+from .model import Model
 
 __all__ = [
     "PrymptError",
@@ -23,9 +24,12 @@ __all__ = [
     "OutputError",
     "PromptError",
     "ResponseError",
+    "QueryError",
     "ToolInitializationError",
     "Output",
     "Prompt",
+    "Model",    
+    "Tool",
     "Response",
     "litellm_completion",
 ]
