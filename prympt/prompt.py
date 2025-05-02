@@ -6,19 +6,17 @@ from __future__ import (  # Required for forward references in older Python vers
 )
 
 import copy
-import inspect
 import warnings
-from typing import Any, Dict, List, Callable, Tuple
-from dataclasses import dataclass, field
+from typing import Any, Dict, List
+from dataclasses import dataclass
 
 from jinja2 import Environment, StrictUndefined, TemplateSyntaxError, nodes
 from jinja2.visitor import NodeVisitor
-from litellm import completion, supports_function_calling, supports_parallel_function_calling
-
+from litellm import completion
 
 from .exceptions import PrymptError, ConcatenationError, PromptError, ReplacementError, ResponseError, QueryError
 from .output import Output, outputs_to_xml
-from .tool import Tool, test_tools, tools_to_schemas, tools_to_prompt
+from .tool import tools_to_schemas, tools_to_prompt
 
 _jinja_env = Environment(undefined=StrictUndefined)
 
