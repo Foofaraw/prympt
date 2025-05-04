@@ -26,15 +26,16 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest==8.3.4",      # Testing framework
-    "pytest-cov==6.0.0",  # Test coverage
-    "black==25.1.0",      # Code formatter
-    "ruff==0.9.5",        # Linter & formatter
-    "mypy==1.15.0",       # Static type checker
+    "pytest==8.3.4",        # Testing framework
+    "pytest-cov==6.0.0",    # Test coverage
+    "black==25.1.0",        # Code formatter
+    "ruff==0.9.5",          # Linter & formatter
+    "mypy==1.15.0",         # Static type checker
     "mypy-extensions==1.0.0",
-    "isort==6.0.0",       # Import sorting
-    "pathspec==0.12.1",   # Required by Black
-    "platformdirs==4.3.6" # Required by Black
+    "isort==6.0.0",         # Import sorting
+    "pathspec==0.12.1",     # Required by Black
+    "platformdirs==4.3.6",  # Required by Black
+    "nest_asyncio==1.6.0"   # Required by Model.embeddings()
 ]
 
 [tool.setuptools.packages.find]

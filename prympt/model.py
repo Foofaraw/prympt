@@ -2,7 +2,14 @@ import json
 from typing import List, Any
 
 from typing import Any, Dict, List
-from litellm import completion, supports_function_calling, supports_parallel_function_calling
+import concurrent.futures
+
+from litellm import (
+    completion,
+    embedding,
+    supports_function_calling,
+    supports_parallel_function_calling,
+)
 
 from .exceptions import ResponseError, QueryError
 from .tool import tools_to_schemas, tools_to_prompt
@@ -60,15 +67,15 @@ def litellm_completion(
 
 class Model:
     
-    def __init__(self, model_file = None, model_params = None):
+    def __init__(self, path = None, params = None):
         
-        assert model_file or model_params
+        assert path or params
         
-        if model_file:
-            with open(model_file, "r", encoding="utf-8") as f:
-                self.model_params = json.load(f)
-        elif model_params:
-            self.model_params = model_params
+        if path:
+            with open(path, "r", encoding="utf-8") as f:
+                self.params = json.load(f)
+        elif params:
+            self.params = params
 
         
     def query(self, text:str, question:str) -> str:
@@ -99,6 +106,40 @@ class Model:
         result = self(prompt)
         
         return result.updated_text, result.changes_summary
+
+    def embeddings(self, texts = List[str]) -> List[List[float]]:
+        
+        import nest_asyncio
+        
+        # Function to run the embedding in a separate thread with the patched event loop
+        def run_embedding_in_thread():
+            # Patch the event loop inside this thread
+            nest_asyncio.apply()
+
+            # Define your synchronous function for embedding (no need for 'await')
+            response = embedding(
+                input=texts,
+                **self.params
+            )
+            
+            # Sanity checks and embeddings retrieval
+            assert response.model == self.params['model']
+            embeddings = []
+            for idx, entry in enumerate(response.data):
+                assert entry['object'] == 'embedding'
+                assert entry['index'] == idx
+                embeddings.append(entry['embedding'])
+            
+            assert len(texts) == len(embeddings)
+            return embeddings
+
+        # Run the code in a separate thread and get the result
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_embedding_in_thread)
+            embedding_result = future.result()  # Get the result from the thread
+        
+        return embedding_result  # Return the embedding result
+
 
     def __call__(
         self,
@@ -139,9 +180,9 @@ class Model:
                     ) if 'model' in kwargs else False
                 '''
                 if native_tool_calling:
-                    llm_response = litellm_completion(prompt, tools=tool_schemas, **self.model_params)
+                    llm_response = litellm_completion(prompt, tools=tool_schemas, **self.params)
                 else:
-                    llm_response = litellm_completion(prompt+tool_calling_prompt, **self.model_params)
+                    llm_response = litellm_completion(prompt+tool_calling_prompt, **self.params)
 
                 response = Response(llm_response, prompt, tools = tools)
                 response.errors = errors
