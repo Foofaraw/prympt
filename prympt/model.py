@@ -15,6 +15,9 @@ from .exceptions import ResponseError, QueryError
 from .tool import tools_to_schemas, tools_to_prompt
 from .prompt import Prompt
 
+import nest_asyncio
+nest_asyncio.apply()
+
 prompt_query = Prompt("""
 
 Given this text:
@@ -107,38 +110,21 @@ class Model:
         
         return result.updated_text, result.changes_summary
 
-    def embeddings(self, texts = List[str]) -> List[List[float]]:
-        
-        import nest_asyncio
-        
-        # Function to run the embedding in a separate thread with the patched event loop
-        def run_embedding_in_thread():
-            # Patch the event loop inside this thread
-            nest_asyncio.apply()
-
-            # Define your synchronous function for embedding (no need for 'await')
-            response = embedding(
-                input=texts,
-                **self.params
-            )
+    def embeddings(self, texts: List[str]) -> List[List[float]]:
+        response = embedding(
+            input=texts,
+            **self.params
+        )
+        assert response.model == self.params['model']
+        embeddings = []
+        for idx, entry in enumerate(response.data):
+            assert entry['object'] == 'embedding'
+            assert entry['index'] == idx
+            embeddings.append(entry['embedding'])
             
-            # Sanity checks and embeddings retrieval
-            assert response.model == self.params['model']
-            embeddings = []
-            for idx, entry in enumerate(response.data):
-                assert entry['object'] == 'embedding'
-                assert entry['index'] == idx
-                embeddings.append(entry['embedding'])
-            
-            assert len(texts) == len(embeddings)
-            return embeddings
-
-        # Run the code in a separate thread and get the result
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(run_embedding_in_thread)
-            embedding_result = future.result()  # Get the result from the thread
+        assert len(texts) == len(embeddings)
         
-        return embedding_result  # Return the embedding result
+        return embeddings
 
 
     def __call__(
