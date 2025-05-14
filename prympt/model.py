@@ -80,6 +80,7 @@ class Model:
         elif params:
             self.params = params
 
+        self.embeddings_cache = dict()
         
     def query(self, text:str, question:str) -> str:
         '''
@@ -110,20 +111,35 @@ class Model:
         
         return result.updated_text, result.changes_summary
 
-    def embeddings(self, texts: List[str]) -> List[List[float]]:
+    def embeddings(self, texts: List[str], use_cache: bool = True) -> List[List[float]]:
+        
+        if use_cache:
+            not_cached = [ text for text in texts if text not in self.embeddings_cache ]
+        else:
+            not_cached = texts
+        
         response = embedding(
-            input=texts,
+            input=not_cached,
             **self.params
         )
         assert response.model == self.params['model']
-        embeddings = []
+        new_embeddings = []
         for idx, entry in enumerate(response.data):
             assert entry['object'] == 'embedding'
             assert entry['index'] == idx
-            embeddings.append(entry['embedding'])
+            new_embeddings.append(entry['embedding'])
             
+        if not use_cache:
+            embeddings = new_embeddings
+        else:
+            for idx, emb in enumerate(new_embeddings):
+                self.embeddings_cache[not_cached[idx]] = emb
+
+            embeddings = []
+            for text in texts:
+                embeddings.append(self.embeddings_cache[text])
+
         assert len(texts) == len(embeddings)
-        
         return embeddings
 
 
