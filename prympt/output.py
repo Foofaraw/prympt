@@ -13,7 +13,8 @@ from lxml import etree
 from .exceptions import OutputError
 
 
-def convert_to_Python_type(value_str: str, type_str: str) -> Any:
+def convert_to_Python_type(name:str, value_str: str, type_str: str) -> Any:
+    
     safe_globals = {
         "__builtins__": None,
         "int": int,
@@ -32,7 +33,7 @@ def convert_to_Python_type(value_str: str, type_str: str) -> Any:
         return parsed_type(ast.literal_eval(value_str))
     except SyntaxError:
         raise OutputError(
-            f"Could not cast parameter value '{value_str}' to suggested type '{type_str}'"
+            f"Could not cast value '{value_str}' in parameter '{name}' to suggested type '{type_str}'"
         )
 
 
@@ -54,7 +55,7 @@ class Output:
 
         if self.type and self.content:
             if self.type != "str":
-                self.content = convert_to_Python_type(self.content, self.type)
+                self.content = convert_to_Python_type(self.name, self.content, self.type)
 
 
 def outputs_to_xml(outputs: List[Output]) -> str:

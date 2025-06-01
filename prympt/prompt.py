@@ -54,7 +54,7 @@ def _jinja_substitution(template: str, **kwargs: Any) -> str:
     """
     return _jinja_env.from_string(template).render(**kwargs)
 
-from typing import Union
+from typing import Union, Optional
 
 def litellm_completion(
     data: Any, # Either string, message or prompt
@@ -82,20 +82,26 @@ class Prompt:
         outputs (List[Output]): List of outputs.
     """
 
-    def __init__(self, template: str = "", outputs: List[Output] = []):
+
+
+    def __init__(self, template: str = "", outputs: Optional[List[Output]] = None):
         """Initialize a Prompt instance.
 
         Args:
             template (str): The template string.
             returns (List[Output]): List of outputs
         """
+        
         self.template: str = template
-        self.outputs: List[Output] = outputs
+        self.outputs: List[Output] = outputs if outputs is not None else []
 
+        self._check_outputs()
+        
+    def _check_outputs(self):
         # Make sure there are no outputs with duplicate names
         errors = []
         index_for_name = dict()
-        for index, output in enumerate(outputs):
+        for index, output in enumerate(self.outputs):
             name = output.name
             if name not in index_for_name:
                 index_for_name[name] = index
@@ -105,7 +111,7 @@ class Prompt:
                 ]
         if errors:
             raise PromptError("\n".join(errors))
-        
+                
     def __call__(self, *args: Any, **kwargs: Any) -> "Prompt":
         """Render the prompt with the given keyword arguments.
 

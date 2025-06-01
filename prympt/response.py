@@ -75,7 +75,7 @@ class Response:
     def __init_outputs(self):
         
         try:
-            self.__outputs: List[Output] = xml_to_outputs(self.__raw_response_text)
+            self._outputs: List[Output] = xml_to_outputs(self.__raw_response_text)
         except ParseError as e:
             raise ResponseError(f"Error parsing XML to get outputs: {e.__str__()}", self.messages)        
         
@@ -87,7 +87,7 @@ class Response:
             if len(self.prompt.outputs) != self.__len__():
                 
                 expected_outputs = ",".join(sorted([ output.name for output in self.prompt.outputs ]))
-                obtained_outputs = ",".join(sorted([ output.name for output in self.__outputs ]))
+                obtained_outputs = ",".join(sorted([ output.name for output in self._outputs ]))
                 
                 raise ResponseError(
                     f"Expected {len(self.prompt.outputs)} outputs in LLM response ({expected_outputs}), but got {self.__len__()} ({obtained_outputs})",
@@ -111,7 +111,7 @@ class Response:
                 raise ResponseError("\n".join(new_errors), self.messages)
             
         # Add output contents as member variables in response object
-        for output in self.__outputs:
+        for output in self._outputs:
             if output.name:
                 self.set_attribute(output.name, output.content)
 
@@ -184,15 +184,15 @@ class Response:
 
     def __iter__(self) -> Iterator[Output]:
         """Returns an iterator over the code blocks."""
-        return iter(self.__outputs)
+        return iter(self._outputs)
 
     def __len__(self) -> int:
         """Returns the number of code blocks."""
-        return len(self.__outputs)
+        return len(self._outputs)
 
     def __getitem__(self, index: int) -> Output:
         """Returns the code block at the given index."""
-        return self.__outputs[index]
+        return self._outputs[index]
 
     def __contains__(self, name: str) -> bool:
         """
@@ -204,4 +204,4 @@ class Response:
         Returns:
             bool: True if output with that name exists in response, False otherwise.
         """
-        return any(output.name == name for output in self.__outputs)
+        return any(output.name == name for output in self._outputs)
