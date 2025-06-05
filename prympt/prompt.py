@@ -7,8 +7,8 @@ from __future__ import (  # Required for forward references in older Python vers
 
 import copy
 import warnings
-from typing import Any, Dict, List
-from dataclasses import dataclass
+from typing import Any, Dict, List, Type
+from dataclasses import dataclass, fields
 
 from jinja2 import Environment, StrictUndefined, TemplateSyntaxError, nodes
 from jinja2.visitor import NodeVisitor
@@ -266,6 +266,30 @@ class Prompt:
             self.template,
             self.outputs + [Output(*args, **kwargs)],
             )
+
+    def from_dataclass(self, cls: Type):
+        """Configures the output to request a dataclass object.
+        Adds outputs to the prompt to match the members of a given dataclass
+
+        Args:
+            cls: dataclass type 
+
+        Returns:
+            Prompt: A new Prompt instance with the added outputs.
+        """
+
+        new_outputs = []
+        for f in fields(cls):
+            name = f.name
+            doc = f.metadata.get("doc", "No documentation")
+            type_ = f.type.__name__
+            new_outputs.append(Output(name, doc, None, type_))
+
+        return Prompt(
+            self.template,
+            self.outputs + new_outputs,
+            )
+
 
     def error(self, error: PrymptError) -> Prompt:
         return self + f"\n\nMake sure to avoid the following error in your response: {str(error)}\n"

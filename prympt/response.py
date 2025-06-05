@@ -5,8 +5,10 @@ from __future__ import (  # Required for forward references in older Python vers
     annotations,
 )
 
-from typing import Iterator, List, Tuple, Any
+from typing import Iterator, List, Tuple, Any, Type
 import json
+from dataclasses import fields
+
 from xml.etree.ElementTree import ParseError
 from .prompt import Prompt
 from .output import Output, xml_to_outputs
@@ -205,3 +207,25 @@ class Response:
             bool: True if output with that name exists in response, False otherwise.
         """
         return any(output.name == name for output in self._outputs)
+
+
+    def to_dataclass(self, cls: Type):
+        """
+        Casts response into a dataclass object
+
+        Args:
+            cls (Type): The dataclass target type.
+
+        Returns:
+            Type: dataclass object
+        """
+
+        outputs = { o.name : o.content for o in self._outputs }
+
+        for f in fields(cls):
+            assert f.name in outputs
+        
+        params = { f.name : outputs[f.name] for f in fields(cls) }
+
+        return cls(**params)
+    
