@@ -267,7 +267,7 @@ class Prompt:
             self.outputs + [Output(*args, **kwargs)],
             )
 
-    def request_dataclass(self, cls: Type):
+    def dataclass(self, cls: Type):
         """Configures the output to request a dataclass object.
         Adds outputs to the prompt to match the members of a given dataclass
 
